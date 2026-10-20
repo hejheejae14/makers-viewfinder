@@ -1,5 +1,5 @@
 import type { ComponentUsage, IndexedScreen, TeamPage } from "../../lib/types";
-import { classifyLibrary } from "./mds";
+import { mdsLibraryName, type MdsComponentKeys } from "./mds";
 import { judgeFrame, type FrameStats } from "./screen-rules";
 
 /**
@@ -40,10 +40,8 @@ export interface ConvertOptions {
   fileKey: string;
   teamPage: TeamPage;
   syncedAt: string;
-  /** 컴포넌트 키 → 소속 라이브러리 파일 이름. 여기 없는 원격 컴포넌트는 소속을 모르는 것으로 둔다. */
-  libraryByComponentKey?: Record<string, string>;
-  /** 이 파일 안에서 만든 컴포넌트(원격이 아닌 것)의 소속 이름 */
-  localLibraryName?: string;
+  /** MDS v1·v2 파일에 있는 컴포넌트 키 (loadMdsComponentKeys). 여기에 없는 컴포넌트는 MDS가 적용되지 않은 것으로 본다. */
+  mdsKeys: MdsComponentKeys;
 }
 
 export interface ExcludedFrame {
@@ -56,13 +54,6 @@ export interface ConvertResult {
   screens: IndexedScreen[];
   excluded: ExcludedFrame[]; // 화면이 아니라고 본 프레임 (사람이 검토할 수 있게 남김)
   ignored: number; // 프레임이 아닌 요소(아이콘, 글자 조각 등)의 수
-}
-
-/** 응답의 컴포넌트 키 목록. 라이브러리 소속 조회(resolveLibraryNames)의 입력으로 쓴다. */
-export function remoteComponentKeys(response: FigmaNodeResponse): string[] {
-  return Object.values(response.components ?? {})
-    .filter((component) => component.remote)
-    .map((component) => component.key);
 }
 
 export function nodeToScreens(response: FigmaNodeResponse, options: ConvertOptions): ConvertResult {
@@ -142,13 +133,14 @@ function toComponentUsage(
   // 변형이 있는 컴포넌트는 묶음 이름이 컴포넌트 이름이고, 개별 이름("State=Empty, Size=Small")이 변형 값이다.
   const setName = info.componentSetId ? response.componentSets?.[info.componentSetId]?.name : undefined;
 
-  // 소속을 모르면 library를 비워 두고 isMds는 false로 둔다. (library가 있고 isMds가 false면 "MDS가 아닌 라이브러리")
-  const library = info.remote ? options.libraryByComponentKey?.[info.key] : options.localLibraryName;
+  // MDS v1·v2 파일에 있는 컴포넌트만 MDS로 본다. 그 외에는 MDS가 적용되지 않은 것이다.
+  const mdsVersion = options.mdsKeys.get(info.key);
   return {
     name: setName ?? info.name,
     variant: setName ? info.name : undefined,
-    library,
-    ...classifyLibrary(library),
+    library: mdsVersion ? mdsLibraryName(mdsVersion) : undefined,
+    isMds: mdsVersion !== undefined,
+    mdsVersion,
   };
 }
 
