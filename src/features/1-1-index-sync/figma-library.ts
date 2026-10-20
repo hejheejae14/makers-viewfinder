@@ -1,7 +1,7 @@
-import { MDS_LIBRARIES, type MdsComponentKeys } from "./mds";
+import { MDS_LIBRARIES, type MdsComponentKeys, type MdsKeys, type MdsStyleKeys } from "./mds";
 
 /**
- * MDS 라이브러리 파일의 컴포넌트 목록을 Figma에서 가져옵니다. (읽기 전용: GET 요청만 보냅니다.)
+ * MDS 라이브러리 파일의 컴포넌트·스타일 목록을 Figma에서 가져옵니다. (읽기 전용: GET 요청만 보냅니다.)
  * Figma 토큰은 환경 변수 FIGMA_TOKEN에서만 읽고, 로그나 오류 메시지에 출력하지 않습니다.
  */
 
@@ -10,7 +10,7 @@ const MAX_RETRIES = 5;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function figmaGet<T>(path: string): Promise<T> {
+export async function figmaGet<T>(path: string): Promise<T> {
   const token = process.env.FIGMA_TOKEN;
   if (!token) throw new Error("FIGMA_TOKEN이 설정되지 않았습니다.");
 
@@ -29,14 +29,18 @@ async function figmaGet<T>(path: string): Promise<T> {
   }
 }
 
-/** MDS v1, v2 파일에 공개된 컴포넌트 키를 모두 모아 돌려준다. 동기화 한 번에 요청 2번이면 된다. */
-export async function loadMdsComponentKeys(): Promise<MdsComponentKeys> {
-  const keys: MdsComponentKeys = new Map();
+/** MDS v1, v2 파일에 공개된 컴포넌트와 스타일(토큰) 키를 모두 모아 돌려준다. 요청은 파일당 2번(컴포넌트, 스타일)이다. */
+export async function loadMdsKeys(): Promise<MdsKeys> {
+  const components: MdsComponentKeys = new Map();
+  const styles: MdsStyleKeys = new Set();
   for (const library of MDS_LIBRARIES) {
-    const { meta } = await figmaGet<{ meta: { components: { key: string }[] } }>(
+    const componentList = await figmaGet<{ meta: { components: { key: string }[] } }>(
       `/v1/files/${library.fileKey}/components`,
     );
-    for (const component of meta.components) keys.set(component.key, library.version);
+    for (const component of componentList.meta.components) components.set(component.key, library.version);
+
+    const styleList = await figmaGet<{ meta: { styles: { key: string }[] } }>(`/v1/files/${library.fileKey}/styles`);
+    for (const style of styleList.meta.styles) styles.add(style.key);
   }
-  return keys;
+  return { components, styles };
 }

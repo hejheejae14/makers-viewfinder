@@ -12,6 +12,15 @@ export type MdsVersion = (typeof MDS_LIBRARIES)[number]["version"];
 /** 컴포넌트 키 → MDS 버전 */
 export type MdsComponentKeys = Map<string, MdsVersion>;
 
+/** MDS 파일의 스타일(토큰) 키. 화면에 쓰인 스타일 중 여기에 있는 것만 MDS 토큰으로 본다. */
+export type MdsStyleKeys = Set<string>;
+
+/** 동기화 한 번에 쓰는 MDS 대조 목록 */
+export interface MdsKeys {
+  components: MdsComponentKeys;
+  styles: MdsStyleKeys;
+}
+
 export function mdsLibraryName(version: MdsVersion): string {
   return MDS_LIBRARIES.find((library) => library.version === version)!.name;
 }

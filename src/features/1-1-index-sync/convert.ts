@@ -1,5 +1,5 @@
 import type { ComponentUsage, IndexedScreen, TeamPage } from "../../lib/types";
-import { mdsLibraryName, type MdsComponentKeys } from "./mds";
+import { mdsLibraryName, type MdsKeys } from "./mds";
 import { judgeFrame, type FrameStats } from "./screen-rules";
 
 /**
@@ -33,15 +33,15 @@ export interface FigmaNodeResponse {
   document: FigmaNode;
   components?: Record<string, FigmaComponentInfo>;
   componentSets?: Record<string, { name: string }>;
-  styles?: Record<string, { name: string }>;
+  styles?: Record<string, { key: string; name: string }>;
 }
 
 export interface ConvertOptions {
   fileKey: string;
   teamPage: TeamPage;
   syncedAt: string;
-  /** MDS v1·v2 파일에 있는 컴포넌트 키 (loadMdsComponentKeys). 여기에 없는 컴포넌트는 MDS가 적용되지 않은 것으로 본다. */
-  mdsKeys: MdsComponentKeys;
+  /** MDS v1·v2 파일에 있는 컴포넌트·스타일 키 (loadMdsKeys). 여기에 없는 것은 MDS가 적용되지 않은 것으로 본다. */
+  mdsKeys: MdsKeys;
 }
 
 export interface ExcludedFrame {
@@ -59,7 +59,12 @@ export interface ConvertResult {
 export function nodeToScreens(response: FigmaNodeResponse, options: ConvertOptions): ConvertResult {
   const result: ConvertResult = { screens: [], excluded: [], ignored: 0 };
   const root = response.document;
-  collect(root, root.type === "SECTION" ? [root.name] : [], response, options, result);
+  if (root.type === "SECTION") {
+    collect(root, [root.name], response, options, result);
+  } else {
+    // 구역에 들어 있지 않고 페이지에 바로 놓인 프레임
+    collect({ ...root, id: "", name: "", type: "CANVAS", children: [root] }, [], response, options, result);
+  }
   return result;
 }
 
@@ -111,9 +116,10 @@ function analyzeFrame(frame: FigmaNode, response: FigmaNodeResponse, options: Co
       stats.shapes += 1;
     }
 
+    // 토큰은 MDS 파일에 있는 스타일만 넣는다. (앱팀이 직접 만든 스타일은 제외)
     for (const styleId of Object.values(node.styles ?? {})) {
-      const styleName = response.styles?.[styleId]?.name;
-      if (styleName) tokens.add(styleName);
+      const style = response.styles?.[styleId];
+      if (style && options.mdsKeys.styles.has(style.key)) tokens.add(style.name);
     }
     for (const child of node.children ?? []) visit(child);
   };
@@ -134,7 +140,7 @@ function toComponentUsage(
   const setName = info.componentSetId ? response.componentSets?.[info.componentSetId]?.name : undefined;
 
   // MDS v1·v2 파일에 있는 컴포넌트만 MDS로 본다. 그 외에는 MDS가 적용되지 않은 것이다.
-  const mdsVersion = options.mdsKeys.get(info.key);
+  const mdsVersion = options.mdsKeys.components.get(info.key);
   return {
     name: setName ?? info.name,
     variant: setName ? info.name : undefined,
