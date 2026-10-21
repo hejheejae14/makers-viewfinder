@@ -1,5 +1,5 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import type { TeamPage } from "../../lib/types";
+import { authorize, json } from "./auth";
 import { TEAM_PAGE_NODE_IDS } from "./config";
 import { getSyncProgress, getTeamIndex, planSync, runSyncStep, SyncBusyError, SyncNotStartedError } from "./sync";
 
@@ -21,25 +21,9 @@ const TEAMS = Object.keys(TEAM_PAGE_NODE_IDS) as TeamPage[];
 const ACTIONS = ["status", "start", "continue"] as const;
 type Action = (typeof ACTIONS)[number];
 
-const digest = (value: string) => createHash("sha256").update(value).digest();
-
-function isAuthorized(request: Request): boolean {
-  const expected = process.env.TEAM_PASSWORD;
-  // 서버에 비밀번호가 설정되어 있지 않으면 아무도 통과시키지 않는다. (열려 있는 상태로 두지 않는다.)
-  if (!expected) return false;
-  const given = request.headers.get("x-team-password") ?? "";
-  return timingSafeEqual(digest(given), digest(expected));
-}
-
-function json(body: unknown, status = 200) {
-  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
-}
-
 export async function handleSyncRequest(request: Request): Promise<Response> {
-  if (!process.env.TEAM_PASSWORD) {
-    return json({ error: "서버에 팀 비밀번호(TEAM_PASSWORD)가 설정되어 있지 않습니다." }, 503);
-  }
-  if (!isAuthorized(request)) return json({ error: "팀 비밀번호가 맞지 않습니다." }, 401);
+  const denied = authorize(request);
+  if (denied) return denied;
 
   const body = (await request.json().catch(() => null)) as { action?: string; team?: string } | null;
   const action = ACTIONS.find((candidate) => candidate === body?.action);

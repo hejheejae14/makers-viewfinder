@@ -16,6 +16,21 @@ export interface ComponentUsage {
 }
 
 /**
+ * 화면 속 MDS 컴포넌트 하나 (2-4 MDS 표시가 화면 위에 위치로 보여 준다)
+ * MDS가 아닌 컴포넌트(시스템 UI 포함)와 MDS 컴포넌트 안쪽의 컴포넌트는 넣지 않는다.
+ */
+export interface MdsElement {
+  id: string; // Figma 노드 ID
+  component: string; // 컴포넌트 이름, 예: "Button_Text"
+  variant?: string; // 변형(속성) 값, 예: "State=Default"
+  mdsVersion: "v1" | "v2";
+  tokens: string[]; // 이 요소에 쓰인 MDS 토큰 이름
+  texts: string[]; // 요소 안의 글 (숨겨진 레이어 제외)
+  /** 화면 프레임의 왼쪽 위를 기준으로 한 위치와 크기 (px) */
+  box: { x: number; y: number; width: number; height: number };
+}
+
+/**
  * 검색 인덱스의 화면 하나 (1-1 인덱스 생성 및 동기화가 만든다)
  * 디자인 원본은 저장하지 않고, 찾기 위한 정보만 담는다.
  */
@@ -28,6 +43,9 @@ export interface IndexedScreen {
   texts: string[]; // 화면 속 텍스트 (숨겨진 레이어 제외)
   components: ComponentUsage[];
   tokens: string[]; // 쓰인 MDS 토큰 이름
+  width?: number; // 화면 프레임 크기 (px). elements의 위치를 화면 이미지에 맞출 때 쓴다.
+  height?: number;
+  elements?: MdsElement[]; // 화면 속 MDS 컴포넌트와 위치 (2-4 MDS 표시용)
   figmaUrl: string; // 원본 노드 링크
   syncedAt: string; // 동기화 시각 (ISO 문자열)
 }
