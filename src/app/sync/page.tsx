@@ -78,6 +78,14 @@ export default function SyncPage() {
     return data;
   }
 
+  // 팀 페이지를 바꾸면 이전 팀의 진행 상황과 인덱스 정보가 남아 있지 않도록 지운다.
+  function changeTeam(next: (typeof TEAMS)[number]) {
+    setTeam(next);
+    setStatus(null);
+    setProgress(null);
+    setMessage("");
+  }
+
   async function refreshStatus() {
     setStatus((await call("status")) as Status);
   }
@@ -157,7 +165,7 @@ export default function SyncPage() {
         <label>
           팀 페이지
           <br />
-          <select value={team} onChange={(event) => setTeam(event.target.value as (typeof TEAMS)[number])} disabled={busy}>
+          <select value={team} onChange={(event) => changeTeam(event.target.value as (typeof TEAMS)[number])} disabled={busy}>
             {TEAMS.map((name) => (
               <option key={name} value={name}>
                 {name}
