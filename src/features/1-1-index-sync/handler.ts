@@ -54,7 +54,27 @@ async function run(action: Action, team: TeamPage, figmaToken: string) {
   const [index, pending] = await Promise.all([getTeamIndex(team), getSyncProgress(team)]);
   return {
     team,
-    index: index ? { syncedAt: index.syncedAt, screens: index.screens.length, excluded: index.excluded.length } : null,
+    index: index
+      ? {
+          syncedAt: index.syncedAt,
+          screens: index.screens.length,
+          excluded: index.excluded.length,
+          excludedByReason: summarizeExcluded(index.excluded),
+        }
+      : null,
     pending: pending ?? null,
   };
+}
+
+const EXAMPLES_PER_REASON = 8;
+
+/** 제외한 프레임을 이유별로 묶어 개수와 예시 이름을 돌려준다. 화면 판정 기준이 맞는지 사람이 확인하는 용도 */
+function summarizeExcluded(excluded: { name: string; reason: string }[]) {
+  const byReason: Record<string, { count: number; examples: string[] }> = {};
+  for (const { name, reason } of excluded) {
+    const entry = (byReason[reason] ??= { count: 0, examples: [] });
+    entry.count += 1;
+    if (entry.examples.length < EXAMPLES_PER_REASON && !entry.examples.includes(name)) entry.examples.push(name);
+  }
+  return byReason;
 }
