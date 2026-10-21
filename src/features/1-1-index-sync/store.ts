@@ -57,13 +57,14 @@ class FileStore implements KvStore {
 }
 
 export function getStore(): KvStore {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  // Vercel에서 Redis를 붙이면 변수 이름이 UPSTASH_REDIS_REST_* 또는 KV_REST_API_* 로 만들어질 수 있어 둘 다 읽는다.
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
   if (url && token) return new RedisStore(new Redis({ url, token }));
 
   // 배포 환경에서 Redis 설정을 빠뜨리면 임시 폴더에 저장해 인덱스가 사라지므로, 조용히 넘어가지 않고 멈춘다.
   if (process.env.NODE_ENV === "production") {
-    throw new Error("UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 환경 변수가 설정되지 않았습니다.");
+    throw new Error("Redis 환경 변수(UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN 또는 KV_REST_API_URL / KV_REST_API_TOKEN)가 설정되지 않았습니다.");
   }
   return new FileStore();
 }
