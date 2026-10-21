@@ -12,7 +12,7 @@ import { getStore } from "./store";
  * 2. runSyncStep: 시간 예산 안에서 구역을 하나씩 읽어 임시로 쌓는다. 끝나지 않았으면 다시 호출해 이어서 한다.
  * 3. 전부 읽으면 임시로 쌓은 것을 합쳐 검색 인덱스를 한 번에 교체한다. (끝나기 전에는 이전 인덱스가 그대로 쓰인다.)
  *
- * 같은 팀 페이지의 동기화를 동시에 두 번 실행하지 않는다. (잠금 장치는 아직 없음)
+ * 같은 팀 페이지의 이어 읽기는 동시에 한 번만 실행된다. (runSyncStep이 잠금을 걸고, 오래 걸리거나 멈춰도 잠금은 시간이 지나면 풀린다.)
  */
 
 interface PageChild {
@@ -26,6 +26,7 @@ interface SyncJob {
   startedAt: string;
   items: { id: string; name: string; type: string }[];
   nextIndex: number;
+  lockedUntil?: number; // 이어 읽기를 실행 중인 동안 다른 실행을 막는 시각 (ms)
 }
 
 interface StoredMdsKeys {
@@ -52,6 +53,22 @@ export interface SyncProgress {
   total: number;
   finished: boolean;
 }
+
+/** 같은 팀 페이지의 이어 읽기가 이미 실행 중일 때 */
+export class SyncBusyError extends Error {
+  constructor() {
+    super("이 팀 페이지의 동기화가 이미 실행 중입니다. 잠시 뒤 다시 시도하세요.");
+  }
+}
+
+/** 시작하지 않은(또는 이미 끝난) 동기화를 이어 읽으려 할 때 */
+export class SyncNotStartedError extends Error {
+  constructor() {
+    super("진행 중인 동기화가 없습니다. 먼저 동기화를 시작하세요.");
+  }
+}
+
+const LOCK_MARGIN_MS = 30_000; // 예산을 넘겨 끝나는 마지막 구역과 저장 시간
 
 const jobKey = (team: TeamPage) => `viewfinder:job:${team}`;
 const mdsKeysKey = "viewfinder:mds-keys";
@@ -94,25 +111,35 @@ export async function planSync(team: TeamPage): Promise<SyncProgress> {
 export async function runSyncStep(team: TeamPage, budgetMs = 40_000): Promise<SyncProgress> {
   const store = getStore();
   const job = await store.get<SyncJob>(jobKey(team));
-  if (!job) throw new Error("진행 중인 동기화가 없습니다. planSync를 먼저 실행하세요.");
+  if (!job) throw new SyncNotStartedError();
+  if (job.lockedUntil && Date.now() < job.lockedUntil) throw new SyncBusyError();
 
   const startedAt = Date.now();
   const storedKeys = await store.get<StoredMdsKeys>(mdsKeysKey);
   if (!storedKeys) throw new Error("MDS 대조 목록이 없습니다. planSync부터 다시 실행하세요.");
   const mdsKeys: MdsKeys = { components: new Map(storedKeys.components), styles: new Set(storedKeys.styles) };
 
-  while (job.nextIndex < job.items.length && Date.now() - startedAt < budgetMs) {
-    const item = job.items[job.nextIndex];
-    const response = await figmaGet<{ nodes: Record<string, FigmaNodeResponse | null> }>(
-      `/v1/files/${PD_FILE_KEY}/nodes?ids=${encodeURIComponent(item.id)}`,
-    );
-    const node = response.nodes[item.id];
-    const staged: StagedItem = node
-      ? nodeToScreens(node, { fileKey: PD_FILE_KEY, teamPage: team, syncedAt: job.startedAt, mdsKeys })
-      : { screens: [], excluded: [{ id: item.id, name: item.name, reason: "Figma에서 읽지 못함" }] };
+  job.lockedUntil = startedAt + budgetMs + LOCK_MARGIN_MS;
+  await store.set(jobKey(team), job);
 
-    await store.set(stageKey(team, item.id), { screens: staged.screens, excluded: staged.excluded } satisfies StagedItem);
-    job.nextIndex += 1;
+  try {
+    while (job.nextIndex < job.items.length && Date.now() - startedAt < budgetMs) {
+      const item = job.items[job.nextIndex];
+      const response = await figmaGet<{ nodes: Record<string, FigmaNodeResponse | null> }>(
+        `/v1/files/${PD_FILE_KEY}/nodes?ids=${encodeURIComponent(item.id)}`,
+      );
+      const node = response.nodes[item.id];
+      const staged: StagedItem = node
+        ? nodeToScreens(node, { fileKey: PD_FILE_KEY, teamPage: team, syncedAt: job.startedAt, mdsKeys })
+        : { screens: [], excluded: [{ id: item.id, name: item.name, reason: "Figma에서 읽지 못함" }] };
+
+      await store.set(stageKey(team, item.id), { screens: staged.screens, excluded: staged.excluded } satisfies StagedItem);
+      job.nextIndex += 1;
+      await store.set(jobKey(team), job);
+    }
+  } finally {
+    // 성공하든 실패하든 잠금을 풀어 다음 이어 읽기가 바로 할 수 있게 한다.
+    job.lockedUntil = undefined;
     await store.set(jobKey(team), job);
   }
 
@@ -145,6 +172,12 @@ async function publishIndex(team: TeamPage, job: SyncJob) {
 
   for (const item of job.items) await store.del(stageKey(team, item.id));
   await store.del(jobKey(team));
+}
+
+/** 진행 중인 동기화가 있으면 어디까지 읽었는지. 없으면 undefined */
+export async function getSyncProgress(team: TeamPage): Promise<SyncProgress | undefined> {
+  const job = await getStore().get<SyncJob>(jobKey(team));
+  return job ? { team, done: job.nextIndex, total: job.items.length, finished: false } : undefined;
 }
 
 /** 현재 검색 인덱스. 아직 동기화한 적이 없으면 undefined */
