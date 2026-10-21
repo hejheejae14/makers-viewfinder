@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // 1-1 인덱스 동기화 화면입니다. 팀 비밀번호는 입력한 순간 서버로 보내 확인할 뿐 이 화면에 저장하지 않습니다.
+// Figma 토큰은 동기화하는 사람의 개인 토큰이며, 이 브라우저(localStorage)에만 저장합니다. 서버에는 저장하지 않고
+// 동기화 요청에 실어 보내 그 요청에서만 쓰입니다. (AGENTS.md: Figma 토큰도 브라우저에만 저장)
 // 디자인은 임시입니다. 공통 뼈대 담당자가 MDS에 맞춰 바꿉니다.
 
+const TOKEN_STORAGE_KEY = "viewfinder.figmaToken";
 const TEAMS = ["앱", "플그", "크루", "공홈", "어드민"] as const;
 
 interface Progress {
@@ -20,16 +23,54 @@ interface Status {
 
 export default function SyncPage() {
   const [password, setPassword] = useState("");
+  const [figmaToken, setFigmaToken] = useState("");
+  const [rememberToken, setRememberToken] = useState(true);
   const [team, setTeam] = useState<(typeof TEAMS)[number]>("앱");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [message, setMessage] = useState("");
 
+  // 이 브라우저에 저장해 둔 토큰이 있으면 불러온다. (저장소를 쓸 수 없는 브라우저에서는 건너뜀)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TOKEN_STORAGE_KEY);
+      // 서버 화면과 같은 첫 화면을 유지하려고, 브라우저 저장소의 값은 화면이 뜬 뒤에 한 번만 채운다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved) setFigmaToken(saved);
+    } catch {}
+  }, []);
+
+  function changeToken(value: string) {
+    setFigmaToken(value);
+    try {
+      if (rememberToken && value) localStorage.setItem(TOKEN_STORAGE_KEY, value);
+    } catch {}
+  }
+
+  function changeRemember(checked: boolean) {
+    setRememberToken(checked);
+    try {
+      if (checked && figmaToken) localStorage.setItem(TOKEN_STORAGE_KEY, figmaToken);
+      if (!checked) localStorage.removeItem(TOKEN_STORAGE_KEY);
+    } catch {}
+  }
+
+  function clearToken() {
+    setFigmaToken("");
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    } catch {}
+  }
+
   async function call(action: "status" | "start" | "continue") {
     const response = await fetch("/api/index-sync", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-team-password": password },
+      headers: {
+        "Content-Type": "application/json",
+        "x-team-password": password,
+        ...(action === "status" ? {} : { "x-figma-token": figmaToken }),
+      },
       body: JSON.stringify({ action, team }),
     });
     const data = await response.json().catch(() => ({}));
@@ -90,6 +131,30 @@ export default function SyncPage() {
           />
         </label>
         <label>
+          내 Figma 토큰
+          <br />
+          <input
+            type="password"
+            value={figmaToken}
+            onChange={(event) => changeToken(event.target.value)}
+            autoComplete="off"
+            disabled={busy}
+          />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={rememberToken}
+            onChange={(event) => changeRemember(event.target.checked)}
+            disabled={busy}
+          />{" "}
+          이 브라우저에 저장 (서버에는 저장되지 않습니다)
+        </label>
+        <p style={{ fontSize: 13 }}>
+          본인 Figma의 Settings → Security → Personal access tokens에서 만듭니다. 권한은 파일 내용 읽기와 디자인 시스템(컴포넌트,
+          스타일) 읽기만 선택하세요. [PD] 문서 모음과 MDS 파일을 볼 수 있는 계정이어야 합니다.
+        </p>
+        <label>
           팀 페이지
           <br />
           <select value={team} onChange={(event) => setTeam(event.target.value as (typeof TEAMS)[number])} disabled={busy}>
@@ -105,14 +170,17 @@ export default function SyncPage() {
           <button onClick={check} disabled={busy || !password}>
             상태 확인
           </button>
-          <button onClick={() => sync(true)} disabled={busy || !password}>
+          <button onClick={() => sync(true)} disabled={busy || !password || !figmaToken}>
             처음부터 동기화
           </button>
           {status?.pending && (
-            <button onClick={() => sync(false)} disabled={busy || !password}>
+            <button onClick={() => sync(false)} disabled={busy || !password || !figmaToken}>
               이어서 동기화 ({status.pending.done}/{status.pending.total})
             </button>
           )}
+          <button onClick={clearToken} disabled={busy || !figmaToken}>
+            내 토큰 지우기
+          </button>
         </div>
       </div>
 
