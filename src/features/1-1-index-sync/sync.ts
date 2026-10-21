@@ -1,6 +1,6 @@
-import type { IndexedScreen, TeamPage } from "../../lib/types";
+import type { ExcludedFrame, IndexedScreen, TeamIndex, TeamPage } from "../../lib/types";
 import { PD_FILE_KEY, TEAM_PAGE_NODE_IDS } from "./config";
-import { nodeToScreens, type ExcludedFrame, type FigmaNodeResponse } from "./convert";
+import { nodeToScreens, type FigmaNodeResponse } from "./convert";
 import { figmaGet, loadMdsKeys } from "./figma-library";
 import type { MdsKeys, MdsVersion } from "./mds";
 import { getStore } from "./store";
@@ -37,14 +37,6 @@ interface StoredMdsKeys {
 interface StagedItem {
   screens: IndexedScreen[];
   excluded: ExcludedFrame[];
-}
-
-/** 검색 인덱스 (2-1 화면 검색이 읽는다) */
-export interface TeamIndex {
-  team: TeamPage;
-  syncedAt: string;
-  screens: IndexedScreen[];
-  excluded: ExcludedFrame[]; // 화면이 아니라고 본 프레임. 사람이 검토할 수 있게 남김
 }
 
 export interface SyncProgress {
