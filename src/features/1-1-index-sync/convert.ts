@@ -95,6 +95,19 @@ function collect(
   }
 }
 
+/** 요소가 화면 프레임 영역과 조금이라도 겹치는지. 위치를 모르면 겹치는 것으로 본다. */
+function overlapsFrame(node: FigmaNode, frame: FigmaNode): boolean {
+  const box = node.absoluteBoundingBox as { x: number; y: number; width: number; height: number } | undefined;
+  const area = frame.absoluteBoundingBox as { x: number; y: number; width: number; height: number } | undefined;
+  if (!box || !area) return true;
+  return (
+    box.x + box.width > area.x &&
+    box.x < area.x + area.width &&
+    box.y + box.height > area.y &&
+    box.y < area.y + area.height
+  );
+}
+
 function analyzeFrame(frame: FigmaNode, response: FigmaNodeResponse, options: ConvertOptions) {
   const stats: FrameStats = { texts: 0, instances: 0, shapes: 0 };
   const texts: string[] = [];
@@ -103,6 +116,9 @@ function analyzeFrame(frame: FigmaNode, response: FigmaNodeResponse, options: Co
 
   const visit = (node: FigmaNode) => {
     if (node.visible === false) return;
+    // 화면 영역 밖에 놓인 글, 컴포넌트, 그림은 화면에 보이지 않으므로 넣지 않는다. (숨김 레이어가 아니라도 마찬가지)
+    // 프레임과 그룹은 안쪽에 화면 안에 있는 것이 있을 수 있어 계속 들어가 본다.
+    if (node.type !== "FRAME" && node.type !== "GROUP" && !overlapsFrame(node, frame)) return;
 
     if (node.type === "TEXT") {
       stats.texts += 1;
