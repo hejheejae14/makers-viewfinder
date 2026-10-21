@@ -11,6 +11,11 @@ export function json(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+/** 요청 헤더에서 Figma 개인 토큰을 읽는다. 저장하지 않고 이 요청에서만 쓴다. */
+export function readFigmaToken(request: Request): string | undefined {
+  return request.headers.get("x-figma-token")?.trim() || undefined;
+}
+
 /** 통과하면 undefined, 통과하지 못하면 그대로 돌려줄 오류 응답 */
 export function authorize(request: Request): Response | undefined {
   const expected = process.env.TEAM_PASSWORD;

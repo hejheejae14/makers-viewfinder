@@ -68,11 +68,12 @@ const stageKey = (team: TeamPage, id: string) => `viewfinder:stage:${team}:${id}
 export const indexKey = (team: TeamPage) => `viewfinder:index:${team}`;
 
 /** 동기화를 새로 시작한다. 진행 중이던 것이 있으면 처음부터 다시 한다. */
-export async function planSync(team: TeamPage): Promise<SyncProgress> {
+export async function planSync(team: TeamPage, figmaToken: string): Promise<SyncProgress> {
   const store = getStore();
   const pageId = TEAM_PAGE_NODE_IDS[team];
   const response = await figmaGet<{ nodes: Record<string, { document: { children?: PageChild[] } } | null> }>(
     `/v1/files/${PD_FILE_KEY}/nodes?ids=${encodeURIComponent(pageId)}&depth=1`,
+    figmaToken,
   );
   const children = response.nodes[pageId]?.document.children;
   if (!children) throw new Error(`Figma에서 ${team} 페이지(${pageId})를 읽지 못했습니다.`);
@@ -86,7 +87,7 @@ export async function planSync(team: TeamPage): Promise<SyncProgress> {
   for (const item of previous?.items ?? []) await store.del(stageKey(team, item.id));
 
   // MDS 대조 목록은 동기화를 시작할 때 한 번만 가져와 저장하고, 이어서 실행할 때마다 다시 가져오지 않는다.
-  const mdsKeys = await loadMdsKeys();
+  const mdsKeys = await loadMdsKeys(figmaToken);
   await store.set(mdsKeysKey, {
     components: [...mdsKeys.components],
     styles: [...mdsKeys.styles],
@@ -100,7 +101,7 @@ export async function planSync(team: TeamPage): Promise<SyncProgress> {
  * 시간 예산(budgetMs) 안에서 남은 구역을 읽는다. 구역 하나를 읽는 데 3~7초 걸리고,
  * 예산을 넘기면 새 구역을 시작하지 않으므로 호출하는 쪽의 제한 시간은 예산보다 10초쯤 넉넉해야 한다.
  */
-export async function runSyncStep(team: TeamPage, budgetMs = 40_000): Promise<SyncProgress> {
+export async function runSyncStep(team: TeamPage, figmaToken: string, budgetMs = 40_000): Promise<SyncProgress> {
   const store = getStore();
   const job = await store.get<SyncJob>(jobKey(team));
   if (!job) throw new SyncNotStartedError();
@@ -119,6 +120,7 @@ export async function runSyncStep(team: TeamPage, budgetMs = 40_000): Promise<Sy
       const item = job.items[job.nextIndex];
       const response = await figmaGet<{ nodes: Record<string, FigmaNodeResponse | null> }>(
         `/v1/files/${PD_FILE_KEY}/nodes?ids=${encodeURIComponent(item.id)}`,
+        figmaToken,
       );
       const node = response.nodes[item.id];
       const staged: StagedItem = node
