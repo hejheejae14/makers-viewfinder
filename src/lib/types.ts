@@ -50,6 +50,24 @@ export interface IndexedScreen {
   syncedAt: string; // 동기화 시각 (ISO 문자열)
 }
 
+/** 화면이 아니라고 보고 인덱스에서 뺀 프레임. 사람이 검토할 수 있게 이유와 함께 남긴다. */
+export interface ExcludedFrame {
+  id: string; // Figma 노드 ID
+  name: string; // 프레임 이름
+  reason: string; // 화면이 아니라고 본 이유
+}
+
+/**
+ * 팀 페이지 하나의 검색 인덱스 (1-1이 만들어 저장하고, 2-1이 읽는다)
+ * 저장소에 팀 페이지마다 이 모양의 값 하나로 들어 있다.
+ */
+export interface TeamIndex {
+  team: TeamPage;
+  syncedAt: string; // 동기화를 시작한 시각 (ISO 문자열)
+  screens: IndexedScreen[];
+  excluded: ExcludedFrame[];
+}
+
 /** Find My Design 판정 규칙 */
 export type Verdict = "정답 후보" | "부분 일치";
 

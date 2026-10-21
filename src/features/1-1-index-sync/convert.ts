@@ -1,4 +1,4 @@
-import type { ComponentUsage, IndexedScreen, MdsElement, TeamPage } from "../../lib/types";
+import type { ComponentUsage, ExcludedFrame, IndexedScreen, MdsElement, TeamPage } from "../../lib/types";
 import { mdsLibraryName, type MdsKeys } from "./mds";
 import { judgeFrame, type FrameStats } from "./screen-rules";
 
@@ -44,11 +44,7 @@ export interface ConvertOptions {
   mdsKeys: MdsKeys;
 }
 
-export interface ExcludedFrame {
-  id: string;
-  name: string;
-  reason: string;
-}
+export type { ExcludedFrame };
 
 export interface ConvertResult {
   screens: IndexedScreen[];
