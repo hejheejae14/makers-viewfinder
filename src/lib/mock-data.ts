@@ -3,6 +3,9 @@ import type { IndexedScreen, SearchResult } from "./types";
 /**
  * 공통 형식에 맞춘 가짜 데이터입니다.
  * 다른 기능이 완성되기 전까지 각자 이 데이터로 개발합니다.
+ *
+ * 일부 화면에는 2-4 MDS 표시를 위해 width, height, elements(화면 속 MDS 컴포넌트와 위치)가 들어 있습니다.
+ * elements가 없는 화면은 "요소 정보를 아직 만들지 않은 화면"이고, elements가 빈 배열([])인 화면은 "MDS 컴포넌트가 없는 화면"입니다.
  */
 
 const homeEmptyMo: IndexedScreen = {
@@ -17,6 +20,27 @@ const homeEmptyMo: IndexedScreen = {
     { name: "Button", variant: "subtle", isMds: true, mdsVersion: "v2" },
   ],
   tokens: ["color/text/secondary", "spacing/24"],
+  width: 375,
+  height: 812,
+  elements: [
+    {
+      id: "100:11",
+      component: "EmptyState",
+      mdsVersion: "v2",
+      tokens: ["color/text/secondary"],
+      texts: ["아직 올라온 게시물이 없어요", "첫 게시물을 남겨 보세요"],
+      box: { x: 24, y: 260, width: 327, height: 240 },
+    },
+    {
+      id: "100:12",
+      component: "Button",
+      variant: "subtle",
+      mdsVersion: "v2",
+      tokens: ["spacing/24"],
+      texts: ["게시물 쓰기"],
+      box: { x: 24, y: 528, width: 327, height: 48 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=100-1",
   syncedAt: "2026-10-15T00:00:00.000Z",
 };
@@ -25,6 +49,27 @@ const homeEmptyPc: IndexedScreen = {
   ...homeEmptyMo,
   id: "100:2",
   name: "W1920/PC/홈_Empty",
+  width: 1920,
+  height: 1080,
+  elements: [
+    {
+      id: "100:21",
+      component: "EmptyState",
+      mdsVersion: "v2",
+      tokens: ["color/text/secondary"],
+      texts: ["아직 올라온 게시물이 없어요", "첫 게시물을 남겨 보세요"],
+      box: { x: 560, y: 340, width: 800, height: 300 },
+    },
+    {
+      id: "100:22",
+      component: "Button",
+      variant: "subtle",
+      mdsVersion: "v2",
+      tokens: ["spacing/24"],
+      texts: ["게시물 쓰기"],
+      box: { x: 880, y: 668, width: 160, height: 48 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=100-2",
 };
 
@@ -37,6 +82,19 @@ const commentMention: IndexedScreen = {
   texts: ["댓글 달기", "@멘션할 사람을 선택하세요"],
   components: [{ name: "TextField", variant: "default", isMds: true, mdsVersion: "v1" }],
   tokens: ["color/border/default"],
+  width: 375,
+  height: 812,
+  elements: [
+    {
+      id: "200:11",
+      component: "TextField",
+      variant: "default",
+      mdsVersion: "v1",
+      tokens: ["color/border/default"],
+      texts: ["@멘션할 사람을 선택하세요"],
+      box: { x: 16, y: 700, width: 343, height: 48 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=200-1",
   syncedAt: "2026-10-15T00:00:00.000Z",
 };
@@ -56,6 +114,45 @@ const loginMo: IndexedScreen = {
     { name: "TextButton", isMds: true, mdsVersion: "v2" },
   ],
   tokens: ["color/text/primary", "color/bg/brand", "spacing/16", "radius/8"],
+  width: 375,
+  height: 812,
+  elements: [
+    {
+      id: "300:11",
+      component: "TextField",
+      variant: "default",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary", "spacing/16"],
+      texts: ["이메일"],
+      box: { x: 24, y: 280, width: 327, height: 56 },
+    },
+    {
+      id: "300:12",
+      component: "TextField",
+      variant: "default",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary", "spacing/16"],
+      texts: ["비밀번호"],
+      box: { x: 24, y: 352, width: 327, height: 56 },
+    },
+    {
+      id: "300:13",
+      component: "Button",
+      variant: "primary",
+      mdsVersion: "v2",
+      tokens: ["color/bg/brand", "radius/8"],
+      texts: ["로그인"],
+      box: { x: 24, y: 440, width: 327, height: 52 },
+    },
+    {
+      id: "300:14",
+      component: "TextButton",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary"],
+      texts: ["비밀번호를 잊으셨나요?"],
+      box: { x: 112, y: 508, width: 150, height: 24 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=300-1",
   syncedAt: "2026-10-15T00:00:00.000Z",
 };
@@ -64,6 +161,28 @@ const loginPc: IndexedScreen = {
   ...loginMo,
   id: "300:2",
   name: "W1920/PC/로그인",
+  width: 1920,
+  height: 1080,
+  elements: [
+    {
+      id: "300:21",
+      component: "TextField",
+      variant: "default",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary", "spacing/16"],
+      texts: ["이메일"],
+      box: { x: 760, y: 360, width: 400, height: 56 },
+    },
+    {
+      id: "300:22",
+      component: "Button",
+      variant: "primary",
+      mdsVersion: "v2",
+      tokens: ["color/bg/brand", "radius/8"],
+      texts: ["로그인"],
+      box: { x: 760, y: 520, width: 400, height: 52 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=300-2",
 };
 
@@ -163,6 +282,45 @@ const postDetailMo: IndexedScreen = {
     { name: "TextField", variant: "default", isMds: true, mdsVersion: "v1" },
   ],
   tokens: ["color/text/primary", "color/text/secondary", "spacing/16"],
+  width: 375,
+  height: 812,
+  // MDS v1과 v2가 한 화면에 섞인 예
+  elements: [
+    {
+      id: "300:81",
+      component: "TopNavigation",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary"],
+      texts: [],
+      box: { x: 0, y: 44, width: 375, height: 56 },
+    },
+    {
+      id: "300:82",
+      component: "Avatar",
+      variant: "small",
+      mdsVersion: "v2",
+      tokens: ["spacing/16"],
+      texts: [],
+      box: { x: 16, y: 120, width: 32, height: 32 },
+    },
+    {
+      id: "300:83",
+      component: "IconButton",
+      mdsVersion: "v1",
+      tokens: ["color/text/secondary"],
+      texts: ["좋아요 12"],
+      box: { x: 300, y: 560, width: 24, height: 24 },
+    },
+    {
+      id: "300:84",
+      component: "TextField",
+      variant: "default",
+      mdsVersion: "v1",
+      tokens: ["color/text/secondary", "spacing/16"],
+      texts: ["댓글을 남겨 보세요"],
+      box: { x: 16, y: 720, width: 343, height: 48 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=300-8",
   syncedAt: "2026-10-15T00:00:00.000Z",
 };
@@ -277,6 +435,36 @@ const crewHomeMo: IndexedScreen = {
     { name: "Button", variant: "primary", isMds: true, mdsVersion: "v2" },
   ],
   tokens: ["color/bg/subtle", "color/text/primary", "spacing/16"],
+  width: 375,
+  height: 812,
+  elements: [
+    {
+      id: "500:11",
+      component: "Card",
+      variant: "crew",
+      mdsVersion: "v2",
+      tokens: ["color/bg/subtle", "spacing/16"],
+      texts: ["내 크루"],
+      box: { x: 16, y: 180, width: 343, height: 160 },
+    },
+    {
+      id: "500:12",
+      component: "Chip",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary"],
+      texts: ["추천 크루"],
+      box: { x: 16, y: 372, width: 88, height: 32 },
+    },
+    {
+      id: "500:13",
+      component: "Button",
+      variant: "primary",
+      mdsVersion: "v2",
+      tokens: ["color/text/primary"],
+      texts: ["크루 만들기"],
+      box: { x: 16, y: 720, width: 343, height: 52 },
+    },
+  ],
   figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=500-1",
   syncedAt: "2026-10-13T00:00:00.000Z",
 };
@@ -530,6 +718,27 @@ const dashboardPc: IndexedScreen = {
   syncedAt: "2026-10-11T00:00:00.000Z",
 };
 
+/* MDS 컴포넌트가 없는 화면 (elements가 빈 배열인 예) */
+
+const eventBannerMo: IndexedScreen = {
+  id: "300:9",
+  fileKey: "MOCK_FILE_KEY",
+  teamPage: "앱",
+  section: "홈",
+  name: "W375/MO/이벤트_배너",
+  texts: ["가을 이벤트", "지금 참여하고 선물 받기"],
+  components: [
+    { name: "EventBanner", library: "앱 로컬 컴포넌트", isMds: false },
+    { name: "StatusBar", library: "앱 로컬 컴포넌트", isMds: false },
+  ],
+  tokens: [],
+  width: 375,
+  height: 812,
+  elements: [],
+  figmaUrl: "https://www.figma.com/design/MOCK_FILE_KEY/mock?node-id=300-9",
+  syncedAt: "2026-10-15T00:00:00.000Z",
+};
+
 export const mockIndex: IndexedScreen[] = [
   homeEmptyMo,
   homeEmptyPc,
@@ -569,6 +778,8 @@ export const mockIndex: IndexedScreen[] = [
   reportListEmptyPc,
   noticeWritePc,
   dashboardPc,
+  // MDS 컴포넌트가 없는 화면
+  eventBannerMo,
 ];
 
 export const mockResults: SearchResult[] = [
