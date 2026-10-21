@@ -17,7 +17,12 @@ interface Progress {
 }
 
 interface Status {
-  index: { syncedAt: string; screens: number; excluded: number } | null;
+  index: {
+    syncedAt: string;
+    screens: number;
+    excluded: number;
+    excludedByReason: Record<string, { count: number; examples: string[] }>;
+  } | null;
   pending: Progress | null;
 }
 
@@ -204,6 +209,18 @@ export default function SyncPage() {
             ? `화면 ${status.index.screens}개, 제외한 프레임 ${status.index.excluded}개 (동기화 ${new Date(status.index.syncedAt).toLocaleString("ko-KR")})`
             : "아직 동기화한 적이 없습니다."}
         </p>
+      )}
+      {status?.index && status.index.excluded > 0 && (
+        <details style={{ marginTop: 8 }}>
+          <summary>제외한 프레임 이유별 보기</summary>
+          <ul style={{ paddingLeft: 20, marginTop: 4 }}>
+            {Object.entries(status.index.excludedByReason).map(([reason, { count, examples }]) => (
+              <li key={reason}>
+                {reason}: {count}개 (예: {examples.join(", ")})
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {message && (
         <p style={{ marginTop: 8 }} role="status">
