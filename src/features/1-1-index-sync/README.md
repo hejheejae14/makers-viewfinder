@@ -31,9 +31,14 @@ index?.screens; // IndexedScreen[]
 ```
 
 - 형식은 `src/lib/types.ts`의 `TeamIndex`, `IndexedScreen`, `MdsElement` 참고
-- 서버에서만 호출 (Redis 접속 정보가 서버 환경 변수에 있음)
-- 인덱스를 브라우저로 돌려주는 서버 API는 아직 없음 (2-1에서 만들 때 팀 비밀번호 확인 필요)
-  - 서버에서 비밀번호를 확인하는 `auth.ts`의 `authorize(request)` 재사용 가능
+- 서버 코드에서는 위 함수로 직접 조회 (Redis 접속 정보가 서버 환경 변수에 있음)
+- 브라우저에서는 `POST /api/index-data`로 조회
+  - 헤더: `x-team-password`
+  - 본문: `{ "team": "앱" }`
+  - 응답: `TeamIndex` (동기화한 적 없는 팀은 404)
+  - Figma 토큰 불필요 (저장된 인덱스를 그대로 반환)
+  - 응답 크기: 팀 페이지 하나의 인덱스 전체 (현재 1~2MB 안팎), 배포 환경의 응답 크기 한도(약 4.5MB)에 가까워지면 나눠서 반환하도록 변경 필요
+- 동작 예시 화면: `/index-prototype.html` (팀 비밀번호 입력 후 인덱스 조회, 화면 위 MDS 컴포넌트 위치 표시, 이미지는 Figma 토큰을 넣으면 표시)
 
 ## 화면 이미지 (2-4 등)
 
@@ -70,10 +75,12 @@ index?.screens; // IndexedScreen[]
 | `config.ts` | Figma 파일 키, 팀 페이지별 노드 ID |
 | `handler.ts` | `POST /api/index-sync` 처리 (상태, 시작, 이어 읽기) |
 | `screen-image.ts` | `POST /api/screen-image` 처리 |
+| `index-data.ts` | `POST /api/index-data` 처리 (저장된 인덱스 반환) |
 | `auth.ts` | 팀 비밀번호 확인, Figma 토큰 헤더 읽기 |
 
 공통 영역의 연결 파일 (`src/app`)
-- `api/index-sync/route.ts`, `api/screen-image/route.ts`: 위 처리 함수 연결
+- `api/index-sync/route.ts`, `api/screen-image/route.ts`, `api/index-data/route.ts`: 위 처리 함수 연결
+- `public/index-prototype.html`: 인덱스 조회와 요소 위치 표시 동작 예시 (데이터는 파일에 없고 서버에서 받아 옴)
 - `sync/page.tsx`: 동기화 화면 (디자인은 임시)
 
 ## 환경 변수
