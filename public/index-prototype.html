@@ -104,12 +104,19 @@ async function loadTeam() {
 }
 
 // 화면 이미지는 저장하지 않고, 화면을 고를 때 Figma에서 임시 주소를 받아 온다.
+function imageScale(s) {
+  const shown = Math.min(s.width || 375, 520);
+  const wanted = (shown * (window.devicePixelRatio || 1)) / (s.width || 375);
+  const maxByHeight = 4000 / (s.height || 812); // Figma 이미지가 너무 커서 실패하지 않도록 세로 4000px 안으로
+  return Math.max(0.25, Math.min(2, wanted, maxByHeight));
+}
+
 async function imageUrl(s) {
   if (s.id in imgCache) return imgCache[s.id];
   const tok = $('tok').value.trim();
   if (!tok) return null;
   try {
-    const res = await fetch('/api/screen-image', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-team-password': $('pw').value, 'x-figma-token': tok }, body: JSON.stringify({ nodeId: s.id, scale: 0.5 }) });
+    const res = await fetch('/api/screen-image', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-team-password': $('pw').value, 'x-figma-token': tok }, body: JSON.stringify({ nodeId: s.id, scale: imageScale(s) }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return null;
     try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
