@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>인덱스 프로토타입</title>
+<style>
+:root{--bg:#f6f6f7;--card:#fff;--text:#18181b;--sub:#71717a;--line:#e4e4e7;--v1:#2563eb;--v2:#16a34a;--no:#ea580c;--sel:#eff6ff;--accent:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f0f10;--card:#1a1a1c;--text:#ececee;--sub:#9a9aa3;--line:#303036;--sel:#1e293b;--accent:#6ea0ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+header{display:flex;gap:10px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);flex-wrap:wrap}
+header b{font-size:14px}
+select,input[type=search]{padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);font-size:13px}
+input[type=search]{min-width:240px;flex:1;max-width:420px}
+.stats{color:var(--sub);font-size:12px}
+.legend{display:flex;gap:10px;color:var(--sub);font-size:12px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+.app{display:grid;grid-template-columns:290px 1fr 340px;height:calc(100vh - 52px)}
+.col{overflow:auto;background:var(--card)}
+.left{border-right:1px solid var(--line)}
+.right{border-left:1px solid var(--line)}
+.mid{background:var(--bg);padding:16px;overflow:auto}
+.tabs{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:2;flex-wrap:wrap}
+.tabs button,.chipbtn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:3px 11px;font-size:12px;cursor:pointer}
+.tabs button.on,.chipbtn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.item{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.item:hover{background:var(--sel)}
+.item.on{background:var(--sel);outline:2px solid var(--accent);outline-offset:-2px}
+.nm{font-weight:600;overflow-wrap:anywhere}
+.sec{color:var(--sub);font-size:11px}
+.badges{display:flex;gap:4px;margin-top:2px;flex-wrap:wrap}
+.b{border-radius:4px;padding:0 6px;font-size:10px;font-weight:700;color:#fff}
+.stage{position:relative;margin:0 auto;box-shadow:0 1px 8px #0003;background:#8883}
+.stage img{display:block;width:100%}
+.noimg{padding:60px 16px;text-align:center;color:var(--sub)}
+.box{position:absolute;border:2px solid;cursor:pointer;border-radius:2px}
+.box:hover{background:#ffffff30}
+.box.on{background:#ffffff45;box-shadow:0 0 0 2px #fff,0 0 0 4px currentColor}
+.tag{position:absolute;top:-1px;left:-1px;transform:translateY(-100%);color:#fff;font-size:10px;padding:0 4px;border-radius:3px 3px 0 0;font-weight:700}
+.detail{padding:12px}
+.detail h2{font-size:15px;margin:0 0 4px;overflow-wrap:anywhere}
+.k{color:var(--sub);font-size:11px;margin:12px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;overflow-wrap:anywhere}
+.el{display:flex;gap:6px;align-items:center;padding:4px 6px;border-radius:5px;cursor:pointer}
+.el:hover,.el.on{background:var(--sel)}
+.el .n{width:20px;color:var(--sub);font-variant-numeric:tabular-nums}
+a{color:var(--accent);text-decoration:none}
+.empty{color:var(--sub);padding:24px 12px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line)}
+.reason{color:var(--sub);font-size:11px;white-space:nowrap}
+@media(max-width:1000px){.app{grid-template-columns:1fr;height:auto}.col{max-height:300px}}
+</style>
+</head>
+<body>
+<header>
+  <b>인덱스 프로토타입</b>
+  <input type="password" id="pw" placeholder="팀 비밀번호" autocomplete="off" style="width:120px">
+  <input type="password" id="tok" placeholder="내 Figma 토큰(이미지용)" autocomplete="off" style="width:150px">
+  <select id="team"></select>
+  <button id="load" class="chipbtn on">불러오기</button>
+  <input type="search" id="q" placeholder="화면 이름, 구역, 화면 속 글, 컴포넌트, 토큰 검색">
+  <span class="stats" id="stats"></span>
+  <span class="legend">
+    <span><i class="dot" style="background:var(--v1)"></i>MDS v1</span>
+    <span><i class="dot" style="background:var(--v2)"></i>MDS v2</span>
+  </span>
+</header>
+<div class="app">
+  <div class="col left" id="left"></div>
+  <div class="mid"><div id="stage" class="stage"></div></div>
+  <div class="col right detail" id="detail"></div>
+</div>
+<script>
+const ALL = {};
+const TEAMS = ['앱', '플그', '크루', '공홈', '어드민'];
+const TOKEN_KEY = 'viewfinder.figmaToken';
+const imgCache = {};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const col = (v) => (v === 'v2' ? 'var(--v2)' : 'var(--v1)');
+let D, view = 'screens', filter = 'all', cur = null, sel = -1;
+
+TEAMS.forEach((t) => $('team').add(new Option(t, t)));
+try { $('tok').value = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+$('q').oninput = renderLeft;
+$('load').onclick = loadTeam;
+$('team').onchange = () => { if (ALL[$('team').value]) setTeam($('team').value); };
+
+// 저장된 인덱스를 서버에서 받아 온다. (팀 비밀번호는 서버에서 확인하며, 이 화면에 저장하지 않는다)
+async function loadTeam() {
+  const team = $('team').value;
+  $('stats').textContent = '불러오는 중…';
+  try {
+    const res = await fetch('/api/index-data', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-team-password': $('pw').value }, body: JSON.stringify({ team }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('요청에 실패했습니다. (' + res.status + ')'));
+    ALL[team] = data;
+    setTeam(team);
+  } catch (e) {
+    $('stats').textContent = e.message;
+  }
+}
+
+// 화면 이미지는 저장하지 않고, 화면을 고를 때 Figma에서 임시 주소를 받아 온다.
+function imageScale(s) {
+  const shown = Math.min(s.width || 375, 520);
+  const wanted = (shown * (window.devicePixelRatio || 1)) / (s.width || 375);
+  const maxByHeight = 4000 / (s.height || 812); // Figma 이미지가 너무 커서 실패하지 않도록 세로 4000px 안으로
+  return Math.max(0.25, Math.min(2, wanted, maxByHeight));
+}
+
+async function imageUrl(s) {
+  if (s.id in imgCache) return imgCache[s.id];
+  const tok = $('tok').value.trim();
+  if (!tok) return null;
+  try {
+    const res = await fetch('/api/screen-image', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-team-password': $('pw').value, 'x-figma-token': tok }, body: JSON.stringify({ nodeId: s.id, scale: imageScale(s) }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    return (imgCache[s.id] = data.url);
+  } catch (e) { return null; }
+}
+
+function setTeam(t) {
+  D = ALL[t]; cur = null; sel = -1;
+  const reasons = {};
+  D.excluded.forEach((e) => (reasons[e.reason] = (reasons[e.reason] || 0) + 1));
+  $('stats').textContent = '화면 ' + D.screens.length + '개 · 제외한 프레임 ' + D.excluded.length + '개 · 동기화 ' + new Date(D.syncedAt).toLocaleString('ko-KR');
+  renderLeft();
+  $('stage').innerHTML = '<div class="noimg">왼쪽에서 화면을 고르세요.</div>';
+  $('detail').innerHTML = '<div class="empty">화면을 고르면 정보가 보입니다.</div>';
+}
+
+function counts(s) {
+  const e = s.elements || [];
+  return { v1: e.filter((x) => x.mdsVersion === 'v1').length, v2: e.filter((x) => x.mdsVersion === 'v2').length };
+}
+
+function renderLeft() {
+  const q = $('q').value.trim().toLowerCase();
+  let html = '<div class="tabs">' +
+    '<button data-v="screens" class="' + (view === 'screens' ? 'on' : '') + '">화면</button>' +
+    '<button data-v="excluded" class="' + (view === 'excluded' ? 'on' : '') + '">제외한 프레임</button>';
+  if (view === 'screens') {
+    html += ['all:전체', 'v1:v1 있음', 'v2:v2 있음', 'none:MDS 없음'].map((f) => {
+      const [k, l] = f.split(':');
+      return '<button class="chipbtn ' + (filter === k ? 'on' : '') + '" data-f="' + k + '">' + l + '</button>';
+    }).join('');
+  }
+  html += '</div>';
+  let n = 0;
+  if (view === 'screens') {
+    D.screens.forEach((s, i) => {
+      const c = counts(s);
+      if (filter === 'v1' && !c.v1) return;
+      if (filter === 'v2' && !c.v2) return;
+      if (filter === 'none' && (c.v1 || c.v2)) return;
+      if (q) {
+        const hay = [s.name, s.section || '', ...s.texts, ...s.components.map((x) => x.name + ' ' + (x.variant || '')), ...s.tokens].join('\n').toLowerCase();
+        if (!hay.includes(q)) return;
+      }
+      n++;
+      html += '<div class="item ' + (cur === i ? 'on' : '') + '" data-i="' + i + '"><div class="nm">' + esc(s.name) + '</div><div class="sec">' + esc(s.section || '(구역 없음)') + '</div><div class="badges">' +
+        (c.v1 ? '<span class="b" style="background:var(--v1)">v1 ' + c.v1 + '</span>' : '') +
+        (c.v2 ? '<span class="b" style="background:var(--v2)">v2 ' + c.v2 + '</span>' : '') + '</div></div>';
+    });
+  } else {
+    D.excluded.forEach((e) => {
+      if (q && !(e.name + e.reason).toLowerCase().includes(q)) return;
+      n++;
+      html += '<div class="row"><div><div class="nm">' + esc(e.name) + '</div><div class="sec">' + esc(e.id) + '</div></div><div style="text-align:right"><div class="reason">' + esc(e.reason) + '</div><a target="_blank" rel="noopener" href="https://www.figma.com/design/' + (D.screens[0] ? D.screens[0].fileKey : '') + '/?node-id=' + e.id.replace(':', '-') + '">Figma ↗</a></div></div>';
+    });
+  }
+  if (!n) html += '<div class="empty">결과가 없습니다.</div>';
+  $('left').innerHTML = html;
+  $('left').querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => { view = b.dataset.v; renderLeft(); }));
+  $('left').querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filter = b.dataset.f; renderLeft(); }));
+  $('left').querySelectorAll('.item').forEach((el) => (el.onclick = () => pick(+el.dataset.i)));
+}
+
+async function pick(i) {
+  cur = i; sel = -1;
+  const s = D.screens[i];
+  document.querySelectorAll('#left .item').forEach((el) => el.classList.toggle('on', +el.dataset.i === i));
+  const W = Math.min(s.width || 375, 520);
+  const st = $('stage');
+  st.style.width = W + 'px';
+  st.style.height = ((s.height || 812) / (s.width || 375)) * W + 'px';
+  const url = await imageUrl(s);
+  if (cur !== i) return;
+  st.innerHTML = (url ? '<img src="' + url + '" alt="">' : '<div class="noimg" style="position:absolute;inset:0;padding:12px;font-size:11px">' + ($('tok').value.trim() ? '이미지를 받지 못했습니다.' : 'Figma 토큰을 넣으면 화면 이미지가 보입니다.') + '</div>') +
+    (s.elements || []).map((e, k) => '<div class="box" data-k="' + k + '" style="color:' + col(e.mdsVersion) + ';border-color:' + col(e.mdsVersion) + ';left:' + (e.box.x / s.width * 100) + '%;top:' + (e.box.y / s.height * 100) + '%;width:' + (e.box.width / s.width * 100) + '%;height:' + (e.box.height / s.height * 100) + '%"><span class="tag" style="background:' + col(e.mdsVersion) + '">' + (k + 1) + '</span></div>').join('');
+  st.querySelectorAll('.box').forEach((b) => (b.onclick = () => { sel = +b.dataset.k; detail(true); }));
+  detail(false);
+}
+
+function chips(a) { return a.length ? '<div class="chips">' + a.map((t) => '<span class="chip">' + esc(t) + '</span>').join('') + '</div>' : '<span class="sec">없음</span>'; }
+
+function detail(scroll) {
+  const s = D.screens[cur];
+  document.querySelectorAll('#stage .box').forEach((b) => b.classList.toggle('on', +b.dataset.k === sel));
+  let html = '<h2>' + esc(s.name) + '</h2><div class="sec">' + esc(s.section || '(구역 없음)') + ' · ' + (s.width || '?') + '×' + (s.height || '?') + ' · ' + esc(s.id) + '</div>' +
+    '<div style="margin-top:6px"><a target="_blank" rel="noopener" href="' + esc(s.figmaUrl) + '">Figma에서 열기 ↗</a></div>';
+  const els = s.elements || [];
+  html += '<div class="k">화면 속 MDS 컴포넌트 ' + els.length + '개 (이미지 위 번호와 같음)</div>';
+  html += els.length ? els.map((e, k) => '<div class="el ' + (k === sel ? 'on' : '') + '" data-k="' + k + '"><span class="n">' + String(k + 1).padStart(2, '0') + '</span><i class="dot" style="background:' + col(e.mdsVersion) + '"></i>' + esc(e.component) + (e.variant ? ' · ' + esc(e.variant) : '') + '</div>').join('') : '<span class="sec">MDS 컴포넌트가 없는 화면</span>';
+  if (sel >= 0 && els[sel]) {
+    const e = els[sel];
+    html += '<div class="k">선택한 요소 ' + String(sel + 1).padStart(2, '0') + '</div><b>' + esc(e.component) + '</b> <span class="b" style="background:' + col(e.mdsVersion) + '">MDS ' + e.mdsVersion + '</span>' +
+      '<div class="k">변형</div>' + (e.variant ? esc(e.variant) : '<span class="sec">없음</span>') +
+      '<div class="k">쓰인 MDS 토큰 ' + e.tokens.length + '개</div>' + chips(e.tokens) +
+      '<div class="k">요소 안의 글</div>' + chips(e.texts) +
+      '<div class="k">위치와 크기</div>x ' + e.box.x + ', y ' + e.box.y + ' · ' + e.box.width + '×' + e.box.height;
+  }
+  html += '<div class="k">화면 속 글 ' + s.texts.length + '개</div>' + chips(s.texts.slice(0, 30)) + (s.texts.length > 30 ? '<div class="sec">… 외 ' + (s.texts.length - 30) + '개</div>' : '');
+  html += '<div class="k">화면의 MDS 토큰 ' + s.tokens.length + '개</div>' + chips(s.tokens);
+  $('detail').innerHTML = html;
+  $('detail').querySelectorAll('.el').forEach((el) => (el.onclick = () => { sel = +el.dataset.k; detail(true); }));
+  if (scroll) { const b = document.querySelector('#stage .box.on'); if (b) b.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+}
+
+$('stats').textContent = '비밀번호를 입력하고 불러오기를 누르세요.';
+$('left').innerHTML = '<div class="empty">팀 페이지를 고르고 불러오기를 누르면 저장된 인덱스를 받아 옵니다.</div>';
+</script>
+</body>
+</html>
