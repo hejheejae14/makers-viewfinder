@@ -1,0 +1,269 @@
+/*
+ * MDS v2 디자인 토큰 (makers design system v2 Figma 파일의 변수에서 그대로 옮김)
+ * - 값을 여기서 임의로 바꾸지 않는다. MDS v2가 바뀌면 그 값을 다시 옮겨 온다.
+ * - 화면과 컴포넌트에서는 base 색을 직접 쓰지 말고 bg / fg / stroke 의미 토큰을 쓴다.
+ * - MDS v2는 다크 테마 하나만 있다. (라이트 모드 없음)
+ * 자세한 설명: docs/design-tokens.md
+ */
+
+@import url("https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css");
+
+:root {
+  /* ---------- color: base (팔레트, 의미 토큰에서만 참조) ---------- */
+
+  --mds-base-gray-0: #ffffff;
+  --mds-base-gray-10: #fcfcfc;
+  --mds-base-gray-20: #f6f6f6;
+  --mds-base-gray-30: #f0f0f0;
+  --mds-base-gray-50: #e4e4e5;
+  --mds-base-gray-100: #c3c3c6;
+  --mds-base-gray-200: #9d9da4;
+  --mds-base-gray-300: #808087;
+  --mds-base-gray-400: #66666d;
+  --mds-base-gray-500: #515159;
+  --mds-base-gray-600: #3f3f47;
+  --mds-base-gray-700: #2e2e35;
+  --mds-base-gray-800: #202025;
+  --mds-base-gray-900: #17181c;
+  --mds-base-gray-950: #0f1012;
+
+  --mds-base-orange-50: #ffece5;
+  --mds-base-orange-100: #ffcebd;
+  --mds-base-orange-200: #ffa480;
+  --mds-base-orange-300: #ff834a;
+  --mds-base-orange-400: #f77234;
+  --mds-base-orange-500: #d4591c;
+  --mds-base-orange-600: #ad4e17;
+  --mds-base-orange-700: #853d11;
+  --mds-base-orange-800: #5c2b0c;
+  --mds-base-orange-900: #422109;
+  --mds-base-orange-950: #2c1d18;
+
+  --mds-base-blue-50: #c8e1ff;
+  --mds-base-blue-100: #8fc0ff;
+  --mds-base-blue-200: #619eff;
+  --mds-base-blue-300: #4485ff;
+  --mds-base-blue-400: #346ffa;
+  --mds-base-blue-500: #2c53df;
+  --mds-base-blue-600: #2649b3;
+  --mds-base-blue-700: #253b8c;
+  --mds-base-blue-800: #23306a;
+  --mds-base-blue-900: #20274d;
+  --mds-base-blue-950: #121a2b;
+
+  --mds-base-red-50: #ffd1d3;
+  --mds-base-red-100: #ffa8ad;
+  --mds-base-red-200: #fe818b;
+  --mds-base-red-300: #fa616d;
+  --mds-base-red-400: #f04251;
+  --mds-base-red-500: #ca2f3d;
+  --mds-base-red-600: #9e2733;
+  --mds-base-red-700: #7a242d;
+  --mds-base-red-800: #562025;
+  --mds-base-red-900: #3c2020;
+  --mds-base-red-950: #2b191d;
+
+  --mds-base-green-50: #ccffec;
+  --mds-base-green-100: #82f6cb;
+  --mds-base-green-200: #4ee4ad;
+  --mds-base-green-300: #26cf91;
+  --mds-base-green-400: #16bf81;
+  --mds-base-green-500: #13a06c;
+  --mds-base-green-600: #138a5e;
+  --mds-base-green-700: #136d4c;
+  --mds-base-green-800: #13533c;
+  --mds-base-green-900: #15372b;
+  --mds-base-green-950: #182926;
+
+  --mds-base-yellow-50: #fff4d4;
+  --mds-base-yellow-100: #ffe9b2;
+  --mds-base-yellow-200: #ffde8a;
+  --mds-base-yellow-300: #ffcd59;
+  --mds-base-yellow-400: #ffc234;
+  --mds-base-yellow-500: #ffb326;
+  --mds-base-yellow-600: #eba01e;
+  --mds-base-yellow-700: #b57b1d;
+  --mds-base-yellow-800: #72531e;
+  --mds-base-yellow-900: #534123;
+  --mds-base-yellow-950: #312a1e;
+
+  /* ---------- color: 의미 토큰 (화면·컴포넌트에서 쓰는 값) ---------- */
+
+  --mds-bg-layer-layer-basement: var(--mds-base-gray-950);
+  --mds-bg-layer-layer-basement-hover: var(--mds-base-gray-800);
+  --mds-bg-layer-layer-default: var(--mds-base-gray-900);
+  --mds-bg-layer-layer-default-hover: var(--mds-base-gray-800);
+
+  --mds-bg-neutral-inverse: var(--mds-base-gray-10);
+  --mds-bg-neutral-inverse-hover: var(--mds-base-gray-100);
+  --mds-bg-neutral-inverse-pressed: var(--mds-base-gray-100);
+  --mds-bg-neutral-bold: var(--mds-base-gray-500);
+  --mds-bg-neutral-bold-disabled: var(--mds-base-gray-700);
+  --mds-bg-neutral-default: var(--mds-base-gray-600);
+  --mds-bg-neutral-default-hover: var(--mds-base-gray-500);
+  --mds-bg-neutral-default-pressed: var(--mds-base-gray-500);
+  --mds-bg-neutral-default-disabled: var(--mds-base-gray-800);
+  --mds-bg-neutral-subtle: var(--mds-base-gray-700);
+  --mds-bg-neutral-subtle-hover: var(--mds-base-gray-600);
+  --mds-bg-neutral-subtle-pressed: var(--mds-base-gray-600);
+  --mds-bg-neutral-ghost: var(--mds-base-gray-800);
+  --mds-bg-neutral-ghost-hover: var(--mds-base-gray-700);
+  --mds-bg-neutral-ghost-pressed: var(--mds-base-gray-700);
+
+  --mds-bg-brand-default: var(--mds-base-orange-400);
+  --mds-bg-brand-subtle: var(--mds-base-orange-700);
+  --mds-bg-brand-ghost: var(--mds-base-orange-950);
+
+  --mds-bg-secondary-default: var(--mds-base-blue-400);
+  --mds-bg-secondary-default-hover: var(--mds-base-blue-500);
+  --mds-bg-secondary-default-pressed: var(--mds-base-blue-600);
+  --mds-bg-secondary-subtle: var(--mds-base-blue-900);
+  --mds-bg-secondary-ghost: var(--mds-base-blue-950);
+
+  --mds-bg-information-ghost: var(--mds-base-blue-950);
+
+  --mds-bg-success-ghost: var(--mds-base-green-950);
+
+  --mds-bg-danger-default: var(--mds-base-red-400);
+  --mds-bg-danger-default-hover: var(--mds-base-red-500);
+  --mds-bg-danger-default-pressed: var(--mds-base-red-600);
+  --mds-bg-danger-ghost: var(--mds-base-red-950);
+
+  --mds-bg-dim: #0f1012cc;
+
+  --mds-fg-neutral-bold: var(--mds-base-gray-10);
+  --mds-fg-neutral-default: var(--mds-base-gray-100);
+  --mds-fg-neutral-default-disabled: var(--mds-base-gray-500);
+  --mds-fg-neutral-subtle: var(--mds-base-gray-300);
+  --mds-fg-neutral-ghost: var(--mds-base-gray-500);
+  --mds-fg-neutral-ghost-disabled: var(--mds-base-gray-700);
+  --mds-fg-neutral-inverse: var(--mds-base-gray-950);
+
+  --mds-fg-brand-default: var(--mds-base-orange-400);
+
+  --mds-fg-secondary-default: var(--mds-base-blue-400);
+
+  --mds-fg-information-default: var(--mds-base-blue-400);
+  --mds-fg-information-subtle: var(--mds-base-blue-600);
+
+  --mds-fg-success-bold: var(--mds-base-green-100);
+  --mds-fg-success-default: var(--mds-base-green-400);
+  --mds-fg-success-subtle: var(--mds-base-green-600);
+
+  --mds-fg-danger-bold: var(--mds-base-red-100);
+  --mds-fg-danger-default: var(--mds-base-red-400);
+  --mds-fg-danger-subtle: var(--mds-base-red-600);
+
+  --mds-fg-attention-bold: var(--mds-base-yellow-200);
+  --mds-fg-attention-default: var(--mds-base-yellow-400);
+  --mds-fg-attention-subtle: var(--mds-base-yellow-600);
+
+  --mds-stroke-neutral-default: var(--mds-base-gray-600);
+  --mds-stroke-neutral-default-focused: var(--mds-base-gray-200);
+  --mds-stroke-neutral-default-disabled: var(--mds-base-gray-700);
+  --mds-stroke-neutral-inverse: var(--mds-base-gray-10);
+  --mds-stroke-neutral-subtle: var(--mds-base-gray-700);
+  --mds-stroke-neutral-ghost: var(--mds-base-gray-800);
+
+  --mds-stroke-brand-default: var(--mds-base-orange-400);
+  --mds-stroke-brand-subtle: var(--mds-base-orange-600);
+
+  --mds-stroke-secondary-default: var(--mds-base-blue-400);
+  --mds-stroke-secondary-subtle: var(--mds-base-blue-600);
+
+  --mds-stroke-information-subtle: var(--mds-base-blue-600);
+
+  --mds-stroke-danger-default: var(--mds-base-red-400);
+
+  /* ---------- typography ---------- */
+  --mds-font-family: "SUIT Variable", "SUIT", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+
+  --mds-heading1: 700 32px/48px var(--mds-font-family);
+  --mds-heading1-letter-spacing: -0.02em;
+  --mds-heading2: 700 24px/36px var(--mds-font-family);
+  --mds-heading2-letter-spacing: -0.02em;
+  --mds-heading3: 700 20px/30px var(--mds-font-family);
+  --mds-heading3-letter-spacing: -0.02em;
+  --mds-heading4: 700 16px/24px var(--mds-font-family);
+  --mds-heading4-letter-spacing: -0.015em;
+  --mds-title1: 600 28px/42px var(--mds-font-family);
+  --mds-title1-letter-spacing: -0.02em;
+  --mds-title2: 600 24px/36px var(--mds-font-family);
+  --mds-title2-letter-spacing: -0.02em;
+  --mds-title3: 600 20px/30px var(--mds-font-family);
+  --mds-title3-letter-spacing: -0.02em;
+  --mds-title4: 600 18px/26px var(--mds-font-family);
+  --mds-title4-letter-spacing: -0.02em;
+  --mds-title5: 600 16px/24px var(--mds-font-family);
+  --mds-title5-letter-spacing: -0.015em;
+  --mds-body1: 400 16px/26px var(--mds-font-family);
+  --mds-body1-letter-spacing: -0.015em;
+  --mds-body2: 400 14px/22px var(--mds-font-family);
+  --mds-body2-letter-spacing: -0.015em;
+  --mds-body3: 400 12px/18px var(--mds-font-family);
+  --mds-body3-letter-spacing: -0.015em;
+  --mds-label1: 600 18px/24px var(--mds-font-family);
+  --mds-label1-letter-spacing: -0.02em;
+  --mds-label2: 600 16px/22px var(--mds-font-family);
+  --mds-label2-letter-spacing: -0.02em;
+  --mds-label3: 600 14px/18px var(--mds-font-family);
+  --mds-label3-letter-spacing: -0.02em;
+  --mds-label4: 600 12px/16px var(--mds-font-family);
+  --mds-label4-letter-spacing: -0.02em;
+
+  /* ---------- spacing ---------- */
+  --mds-space-0: 0px;
+  --mds-space-2: 2px;
+  --mds-space-4: 4px;
+  --mds-space-6: 6px;
+  --mds-space-8: 8px;
+  --mds-space-10: 10px;
+  --mds-space-12: 12px;
+  --mds-space-14: 14px;
+  --mds-space-16: 16px;
+  --mds-space-20: 20px;
+  --mds-space-24: 24px;
+  --mds-space-28: 28px;
+  --mds-space-32: 32px;
+  --mds-space-36: 36px;
+  --mds-space-40: 40px;
+  --mds-space-48: 48px;
+  --mds-space-64: 64px;
+  --mds-space-72: 72px;
+  --mds-space-80: 80px;
+  --mds-space-120: 120px;
+  --mds-space-160: 160px;
+
+  /* ---------- radius ---------- */
+  --mds-radius-0: 0px;
+  --mds-radius-2: 2px;
+  --mds-radius-4: 4px;
+  --mds-radius-6: 6px;
+  --mds-radius-8: 8px;
+  --mds-radius-10: 10px;
+  --mds-radius-12: 12px;
+  --mds-radius-14: 14px;
+  --mds-radius-16: 16px;
+  --mds-radius-20: 20px;
+  --mds-radius-24: 24px;
+  --mds-radius-32: 32px;
+  --mds-radius-full: 9999px;
+}
+
+/* 글자 스타일: class="mds-body2" 처럼 쓰거나 font: var(--mds-body2) + letter-spacing 조합으로 쓴다 */
+.mds-heading1 { font: var(--mds-heading1); letter-spacing: var(--mds-heading1-letter-spacing); }
+.mds-heading2 { font: var(--mds-heading2); letter-spacing: var(--mds-heading2-letter-spacing); }
+.mds-heading3 { font: var(--mds-heading3); letter-spacing: var(--mds-heading3-letter-spacing); }
+.mds-heading4 { font: var(--mds-heading4); letter-spacing: var(--mds-heading4-letter-spacing); }
+.mds-title1 { font: var(--mds-title1); letter-spacing: var(--mds-title1-letter-spacing); }
+.mds-title2 { font: var(--mds-title2); letter-spacing: var(--mds-title2-letter-spacing); }
+.mds-title3 { font: var(--mds-title3); letter-spacing: var(--mds-title3-letter-spacing); }
+.mds-title4 { font: var(--mds-title4); letter-spacing: var(--mds-title4-letter-spacing); }
+.mds-title5 { font: var(--mds-title5); letter-spacing: var(--mds-title5-letter-spacing); }
+.mds-body1 { font: var(--mds-body1); letter-spacing: var(--mds-body1-letter-spacing); }
+.mds-body2 { font: var(--mds-body2); letter-spacing: var(--mds-body2-letter-spacing); }
+.mds-body3 { font: var(--mds-body3); letter-spacing: var(--mds-body3-letter-spacing); }
+.mds-label1 { font: var(--mds-label1); letter-spacing: var(--mds-label1-letter-spacing); }
+.mds-label2 { font: var(--mds-label2); letter-spacing: var(--mds-label2-letter-spacing); }
+.mds-label3 { font: var(--mds-label3); letter-spacing: var(--mds-label3-letter-spacing); }
+.mds-label4 { font: var(--mds-label4); letter-spacing: var(--mds-label4-letter-spacing); }

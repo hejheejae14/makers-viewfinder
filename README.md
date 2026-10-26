@@ -26,6 +26,7 @@ AI 코딩 도구를 쓴다면 "README 보고 이 프로젝트 실행해 줘"라�
 | --- | --- |
 | `src/app` | 페이지와 서버 기능 |
 | `src/features/<기능번호>` | 기능별 작업 폴더. 자기 기능 폴더 안에서 작업합니다. |
+| `src/styles/mds-tokens.css` | MDS v2 디자인 토큰 (색, 글자, 간격, 모서리). 설명은 `docs/design-tokens.md` |
 | `src/lib/types.ts` | 기능끼리 주고받는 공통 데이터 형식 (바꿀 때는 팀 합의) |
 | `src/lib/mock-data.ts` | 공통 형식에 맞춘 가짜 데이터. 다른 기능이 완성되기 전까지 사용합니다. |
 
