@@ -9,7 +9,7 @@ Viewfinder는 토큰을 새로 만들지 않고 **MDS v2(makers design system v2
 
 ## 쓰는 규칙
 
-- 색은 **의미 토큰(`bg` / `fg` / `stroke`)만** 씁니다. `--mds-gray-600` 같은 base 팔레트는 의미 토큰 정의에만 쓰고, 화면에서 직접 쓰지 않습니다.
+- 색은 **의미 토큰(`bg` / `fg` / `stroke`)만** 씁니다. `--mds-base-gray-600` 같은 base 팔레트는 의미 토큰 정의에만 쓰고, 화면에서 직접 쓰지 않습니다.
 - `#3f3f47`처럼 값을 직접 쓰지 않습니다. 맞는 토큰이 없으면 임의로 만들지 말고 팀 채널에 먼저 공유합니다.
 - 토큰 값은 이 저장소에서 바꾸지 않습니다. MDS v2가 바뀌면 Figma 값을 다시 옮겨 옵니다.
 
@@ -22,7 +22,7 @@ Figma 변수 이름의 `/`를 `-`로 바꾸고 앞에 `--mds-`를 붙입니다.
 | `bg/neutral/default` | `--mds-bg-neutral-default` |
 | `fg/neutral/subtle` | `--mds-fg-neutral-subtle` |
 | `stroke/neutral/default` | `--mds-stroke-neutral-default` |
-| `base/gray/600` | `--mds-gray-600` |
+| `base/gray/600` | `--mds-base-gray-600` |
 | `base/size/s16` (Spacing) | `--mds-space-16` |
 | `base/r8` | `--mds-radius-8` |
 | `typography/body2` (글자 스타일) | `--mds-body2` + `--mds-body2-letter-spacing`, 또는 `.mds-body2` 클래스 |
