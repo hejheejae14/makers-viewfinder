@@ -1,0 +1,98 @@
+/* MDS v2 Input / TextField (Figma: ✅ Input > Text Field) */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-10);
+  width: 100%;
+}
+
+.inputArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-6);
+}
+
+/* Figma는 테두리를 안쪽에 그리므로, 1px 테두리만큼 padding을 줄여 높이(46px)를 맞춘다 */
+.input {
+  width: 100%;
+  padding: calc(var(--mds-space-10) - 1px) calc(var(--mds-space-16) - 1px);
+  border: 1px solid transparent;
+  border-radius: var(--mds-radius-10);
+  outline: none;
+  font: var(--mds-body1);
+  letter-spacing: var(--mds-body1-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.input::placeholder {
+  color: var(--mds-fg-neutral-ghost);
+}
+
+/* variant: Default는 지면 바로 위, Bold는 카드·모달처럼 채워진 배경 위 */
+.default .input {
+  background: var(--mds-bg-layer-layer-default);
+}
+
+.bold .input {
+  background: var(--mds-bg-neutral-ghost);
+}
+
+.input:focus {
+  border-color: var(--mds-stroke-neutral-default-focused);
+}
+
+.error .input,
+.error .input:focus {
+  border-color: var(--mds-stroke-danger-default);
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+.default .input:disabled::placeholder {
+  color: var(--mds-fg-neutral-ghost-disabled);
+}
+
+.bold .input:disabled::placeholder {
+  color: var(--mds-fg-neutral-default-disabled);
+}
+
+.helper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--mds-space-20);
+  padding: 0 var(--mds-space-2);
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+  color: var(--mds-fg-neutral-ghost);
+}
+
+.disabledField .helper {
+  color: var(--mds-fg-neutral-ghost-disabled);
+}
+
+.helperText {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.errorMessage {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  gap: var(--mds-space-4);
+  min-width: 0;
+  color: var(--mds-fg-danger-default);
+}
+
+.errorMessage img {
+  flex-shrink: 0;
+}
+
+.counter {
+  flex-shrink: 0;
+  text-align: right;
+}

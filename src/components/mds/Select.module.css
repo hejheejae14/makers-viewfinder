@@ -1,0 +1,107 @@
+/* MDS v2 Select (Single) + Select / Menu (Text) (Figma: ✅ List > Select, Select / Menu) */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-10);
+  width: 100%;
+}
+
+.wrapper {
+  position: relative;
+  min-width: 100px;
+}
+
+/* Figma는 테두리를 안쪽에 그리므로, 1px 테두리만큼 padding을 줄여 높이(46px)를 맞춘다 */
+.trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  padding: calc(var(--mds-space-12) - 1px) calc(var(--mds-space-16) - 1px);
+  border: 1px solid transparent;
+  border-radius: var(--mds-radius-10);
+  background: var(--mds-bg-neutral-ghost);
+  font: var(--mds-label2);
+  letter-spacing: var(--mds-label2-letter-spacing);
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger:focus-visible,
+.open .trigger {
+  border-color: var(--mds-stroke-neutral-inverse);
+  outline: none;
+}
+
+.value {
+  flex: 1 0 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mds-fg-neutral-bold);
+}
+
+.placeholder {
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.chevron {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding-left: var(--mds-space-12);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--mds-space-10));
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 100px;
+  padding: var(--mds-space-8);
+  border-radius: var(--mds-radius-12);
+  background: var(--mds-bg-neutral-ghost);
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  min-width: 80px;
+  padding: var(--mds-space-8) var(--mds-space-8) var(--mds-space-8) var(--mds-space-12);
+  border-radius: var(--mds-radius-8);
+  cursor: pointer;
+}
+
+.item:hover,
+.activeItem {
+  background: var(--mds-bg-neutral-ghost-hover);
+}
+
+.itemText {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.itemLabel {
+  font: var(--mds-label2);
+  letter-spacing: var(--mds-label2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.itemDescription {
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.item img {
+  flex-shrink: 0;
+}

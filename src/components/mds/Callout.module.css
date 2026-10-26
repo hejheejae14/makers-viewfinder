@@ -1,0 +1,41 @@
+/* MDS v2 Callout (Figma: ✅ Callout > Basic) */
+
+/* 좌우 18px은 Figma 값 그대로 (간격 토큰에 18이 없음). 테두리 1px만큼 padding을 줄인다 */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mds-space-10);
+  width: 100%;
+  padding: calc(var(--mds-space-14) - 1px) calc(18px - 1px);
+  border: 1px solid;
+  border-radius: var(--mds-radius-10);
+}
+
+.information {
+  background: var(--mds-bg-information-ghost);
+  border-color: var(--mds-stroke-information-subtle);
+}
+
+.danger {
+  background: var(--mds-bg-danger-ghost);
+  border-color: var(--mds-stroke-danger-default);
+}
+
+.callout > img {
+  flex-shrink: 0;
+}
+
+.contents {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mds-space-16);
+  min-width: 0;
+}
+
+.text {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}

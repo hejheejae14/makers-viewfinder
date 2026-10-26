@@ -1,0 +1,29 @@
+/* MDS v2 Input의 label + description 영역 (TextField, Select가 함께 쓴다) */
+
+.labelArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-2);
+  padding: 0 var(--mds-space-2);
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-4);
+  font: var(--mds-title5);
+  letter-spacing: var(--mds-title5-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.required {
+  font: var(--mds-title4);
+  letter-spacing: var(--mds-title4-letter-spacing);
+  color: var(--mds-fg-brand-default);
+}
+
+.description {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}

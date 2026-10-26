@@ -1,0 +1,36 @@
+/* MDS v2 Text Button (Figma: ✅ Button > Text Button) */
+
+.textButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mds-space-0);
+  padding: var(--mds-space-0);
+  border: none;
+  background: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.small {
+  font: var(--mds-label4);
+  letter-spacing: var(--mds-label4-letter-spacing);
+}
+
+.medium {
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+}
+
+/* Figma에서 Hover/Press는 Default와 같은 색이다 */
+.default {
+  color: var(--mds-fg-neutral-default);
+}
+
+.emphasis {
+  color: var(--mds-fg-neutral-bold);
+}
+
+.disabled {
+  color: var(--mds-fg-neutral-default-disabled);
+  cursor: not-allowed;
+}

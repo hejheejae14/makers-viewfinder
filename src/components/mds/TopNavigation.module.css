@@ -1,0 +1,27 @@
+/* MDS v2 TopNavigation (Web) · Variant=left, Size=md, Profile=false (Figma: ✅ Top navigation) */
+
+.topNavigation {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-20);
+  width: 100%;
+  height: 64px;
+  padding: var(--mds-space-4) var(--mds-space-20);
+  background: var(--mds-bg-layer-layer-basement);
+}
+
+.titleSlot {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  gap: var(--mds-space-40);
+  height: 100%;
+  min-width: 0;
+}
+
+.rightSlot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 100%;
+}
