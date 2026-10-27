@@ -21,7 +21,7 @@ export function Callout({ tone = "information", icon = true, action, className, 
         <img src={`/mds-icons/feedback-${tone}.svg`} alt="" width={20} height={20} />
       )}
       <div className={styles.contents}>
-        <p className={styles.text}>{children}</p>
+        <div className={styles.text}>{children}</div>
         {action}
       </div>
     </div>

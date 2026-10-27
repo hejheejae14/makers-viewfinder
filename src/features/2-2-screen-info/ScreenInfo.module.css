@@ -1,0 +1,83 @@
+/* 2-2. 화면 정보 (Figma: Viewfinder 와이어프레임 > 2-1~2-4, 3-1. 검색과 결과 > Detail > Overview) */
+
+.overview {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mds-space-24);
+}
+
+/* MDS v2에 썸네일 컴포넌트가 없어 토큰으로 자리만 잡는다. 실제 이미지는 나중에 연결 */
+.thumbnail {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 360px;
+  border-radius: var(--mds-radius-10);
+  background: var(--mds-bg-neutral-ghost);
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.info {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mds-space-12);
+  min-width: 0;
+}
+
+.name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font: var(--mds-title3);
+  letter-spacing: var(--mds-title3-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: var(--mds-space-12);
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+}
+
+.meta dt {
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.meta dd {
+  color: var(--mds-fg-neutral-bold);
+}
+
+.summary {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-12);
+}
+
+.evidenceGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-4);
+}
+
+.evidenceTitle {
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+}
+
+.evidenceList {
+  padding-left: var(--mds-space-16);
+  list-style: disc;
+}
