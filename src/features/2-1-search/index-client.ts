@@ -24,7 +24,7 @@ export async function loadTeamIndex({ team, teamPassword, signal }: LoadTeamInde
   const body = (await response.json().catch(() => null)) as TeamIndex | { error?: string } | null;
   if (!response.ok) {
     const message = body && "error" in body ? body.error : undefined;
-    throw new Error(message ?? `검색 인덱스를 가져오지 못했습니다. (${response.status})`);
+    throw new Error(message ?? `검색 인덱스를 가져오지 못했어요. (${response.status})`);
   }
 
   return body as TeamIndex;

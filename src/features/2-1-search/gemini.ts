@@ -83,7 +83,7 @@ async function generateJson({ apiKey, model, systemInstruction, input, signal }:
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
-    throw new Error("Gemini에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.");
+    throw new Error("Gemini에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
   }
 
   if (!response.ok) throw geminiHttpError(response.status);
@@ -91,17 +91,17 @@ async function generateJson({ apiKey, model, systemInstruction, input, signal }:
   const body = (await response.json().catch(() => null)) as GeminiResponse | null;
   const text = body?.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
   if (!text) {
-    if (body?.promptFeedback?.blockReason) throw new Error("Gemini가 이 검색어의 처리를 차단했습니다. 다른 표현으로 다시 시도해 주세요.");
-    throw new Error("Gemini가 검색 결과를 돌려주지 않았습니다. 다시 시도해 주세요.");
+    if (body?.promptFeedback?.blockReason) throw new Error("Gemini가 이 검색어의 처리를 차단했어요. 다른 표현으로 다시 시도해 주세요.");
+    throw new Error("Gemini가 검색 결과를 돌려주지 않았어요. 다시 시도해 주세요.");
   }
 
   return parseGeminiJson(text);
 }
 
 function geminiHttpError(status: number) {
-  if (status === 400) return new Error("Gemini 요청을 처리하지 못했습니다. API 키와 검색어를 확인해 주세요.");
-  if (status === 401 || status === 403) return new Error("Gemini API 키가 올바르지 않거나 사용할 권한이 없습니다.");
-  if (status === 429) return new Error("Gemini 무료 사용 한도를 모두 썼습니다. 잠시 후 다시 시도하거나 다른 키를 입력해 주세요.");
-  if (status >= 500) return new Error("Gemini 서비스가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요.");
-  return new Error(`Gemini 요청에 실패했습니다. (${status})`);
+  if (status === 400) return new Error("Gemini 요청을 처리하지 못했어요. API 키와 검색어를 확인해 주세요.");
+  if (status === 401 || status === 403) return new Error("Gemini API 키가 올바르지 않거나 사용할 권한이 없어요.");
+  if (status === 429) return new Error("Gemini 무료 사용 한도를 모두 썼어요. 잠시 후 다시 시도하거나 다른 키를 입력해 주세요.");
+  if (status >= 500) return new Error("Gemini 서비스가 일시적으로 응답하지 않아요. 잠시 후 다시 시도해 주세요.");
+  return new Error(`Gemini 요청에 실패했어요. (${status})`);
 }

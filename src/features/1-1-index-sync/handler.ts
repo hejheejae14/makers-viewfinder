@@ -41,7 +41,7 @@ export async function handleSyncRequest(request: Request): Promise<Response> {
     if (error instanceof FigmaAccessError) return json({ error: error.message }, 403);
     if (error instanceof SyncBusyError || error instanceof SyncNotStartedError) return json({ error: error.message }, 409);
     // 오류 메시지에는 Figma 토큰 같은 비밀 값이 들어가지 않는다. (figma-library.ts는 요청 경로만 알린다.)
-    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났습니다." }, 500);
+    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났어요." }, 500);
   }
 }
 

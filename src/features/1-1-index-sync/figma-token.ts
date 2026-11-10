@@ -20,7 +20,7 @@ interface Saved {
 /** 등록된 토큰이 없을 때 */
 export class FigmaTokenMissingError extends Error {
   constructor() {
-    super("팀 공용 Figma 토큰이 등록되어 있지 않습니다. /sync 화면에서 등록하세요.");
+    super("팀 공용 Figma 토큰이 등록되어 있지 않아요. 인덱스 동기화 화면에서 등록해 주세요.");
   }
 }
 
@@ -46,7 +46,7 @@ export async function handleFigmaTokenRequest(request: Request): Promise<Respons
     const store = getStore();
     if (action === "set") {
       const token = typeof body?.token === "string" ? body.token.trim() : "";
-      if (!token) return json({ error: "등록할 Figma 토큰이 필요합니다." }, 400);
+      if (!token) return json({ error: "등록할 Figma 토큰이 필요해요." }, 400);
       // 저장하기 전에 [PD] 문서 모음을 읽을 수 있는 토큰인지 확인한다. (읽기 요청만 보냄)
       await figmaGet(`/v1/files/${PD_FILE_KEY}?depth=1`, token);
       await store.set(KEY, { token, savedAt: new Date().toISOString() } satisfies Saved);
@@ -57,6 +57,6 @@ export async function handleFigmaTokenRequest(request: Request): Promise<Respons
     return json({ configured: Boolean(saved), savedAt: saved?.savedAt ?? null });
   } catch (error) {
     if (error instanceof FigmaAccessError) return json({ error: error.message }, 403);
-    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났습니다." }, 500);
+    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났어요." }, 500);
   }
 }

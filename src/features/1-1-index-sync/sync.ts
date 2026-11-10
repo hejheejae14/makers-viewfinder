@@ -49,14 +49,14 @@ export interface SyncProgress {
 /** 같은 팀 페이지의 이어 읽기가 이미 실행 중일 때 */
 export class SyncBusyError extends Error {
   constructor() {
-    super("이 팀 페이지의 동기화가 이미 실행 중입니다. 잠시 뒤 다시 시도하세요.");
+    super("이 팀 페이지의 동기화가 이미 실행 중이에요. 잠시 뒤 다시 시도해 주세요.");
   }
 }
 
 /** 시작하지 않은(또는 이미 끝난) 동기화를 이어 읽으려 할 때 */
 export class SyncNotStartedError extends Error {
   constructor() {
-    super("진행 중인 동기화가 없습니다. 먼저 동기화를 시작하세요.");
+    super("진행 중인 동기화가 없어요. 먼저 동기화를 시작해 주세요.");
   }
 }
 
@@ -76,7 +76,7 @@ export async function planSync(team: TeamPage, figmaToken: string): Promise<Sync
     figmaToken,
   );
   const children = response.nodes[pageId]?.document.children;
-  if (!children) throw new Error(`Figma에서 ${team} 페이지(${pageId})를 읽지 못했습니다.`);
+  if (!children) throw new Error(`Figma에서 ${team} 페이지(${pageId})를 읽지 못했어요.`);
 
   // 구역과 페이지에 바로 놓인 프레임만 읽는다. (아이콘, 글자 조각 등은 화면이 아니다)
   const items = children

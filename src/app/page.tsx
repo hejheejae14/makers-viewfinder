@@ -1,18 +1,18 @@
-import { mockResults } from "@/lib/mock-data";
+"use client";
 
-// 임시 첫 화면입니다. 실제 화면은 0. 공통 뼈대 담당자가 디자인에 맞춰 교체합니다.
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useSession } from "@/lib/session";
+
+// 첫 화면: 저장된 설정(팀 비밀번호·개인 API 키)이 있으면 검색 화면으로, 없으면 첫 진입 설정 화면으로 보낸다.
 export default function Home() {
-  return (
-    <main style={{ padding: 24 }}>
-      <h1>Viewfinder</h1>
-      <p>기본 설치가 완료되었습니다. 아래는 공통 데이터 형식으로 만든 가짜 검색 결과입니다.</p>
-      <ul style={{ marginTop: 16, paddingLeft: 20 }}>
-        {mockResults.map((result) => (
-          <li key={result.screen.id}>
-            [{result.verdict}] {result.screen.teamPage} / {result.screen.name}
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
+  const session = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (session === undefined) return;
+    router.replace(session ? "/search" : "/setup");
+  }, [session, router]);
+
+  return null;
 }

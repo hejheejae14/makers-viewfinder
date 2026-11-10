@@ -11,7 +11,7 @@ import { MDS_LIBRARIES, type MdsComponentKeys, type MdsKeys, type MdsStyleKeys }
 export class FigmaAccessError extends Error {
   constructor() {
     super(
-      "팀 공용 Figma 토큰으로 필요한 파일을 읽을 수 없습니다. 토큰이 맞는지, 만료되지 않았는지, 그리고 [PD] 문서 모음과 MDS 파일을 볼 수 있는 계정인지 확인한 뒤 /sync 화면에서 새 토큰을 등록하세요.",
+      "팀 공용 Figma 토큰으로 필요한 파일을 읽을 수 없어요. 토큰이 맞는지, 만료되지 않았는지, [PD] 문서 모음과 MDS 파일을 볼 수 있는 계정인지 확인한 뒤 인덱스 동기화 화면에서 새 토큰을 등록해 주세요.",
     );
   }
 }
@@ -27,7 +27,7 @@ export async function figmaGet<T>(path: string, token: string): Promise<T> {
     if (res.status === 429) {
       // 안내된 시간이 짧아도 한도가 바로 풀리지 않는 경우가 있어, 기다리는 시간을 점점 늘린다.
       const waitSeconds = Math.max(Number(res.headers.get("retry-after")) || 0, 2) * 2 ** attempt;
-      if (attempt >= MAX_RETRIES) throw new Error("Figma 요청 한도가 풀리지 않습니다. 잠시 뒤 다시 시도하세요.");
+      if (attempt >= MAX_RETRIES) throw new Error("Figma 요청 한도가 풀리지 않아요. 잠시 뒤 다시 시도해 주세요.");
       await sleep(Math.min(waitSeconds, 30) * 1000);
       continue;
     }

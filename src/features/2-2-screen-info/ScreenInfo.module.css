@@ -21,6 +21,13 @@
   color: var(--mds-fg-neutral-subtle);
 }
 
+.thumbnailImage {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+}
+
 .info {
   display: flex;
   flex: 1 0 0;

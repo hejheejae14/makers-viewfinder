@@ -64,7 +64,7 @@ function ComparisonPanel({ result, screens, apiKey, exampleCases }: MdsComparePr
       if (!controller.signal.aborted) setComparison({ status: "ready", cases: ranked });
     } catch (error) {
       if (!controller.signal.aborted) {
-        const message = error instanceof Error ? error.message : "사용 사례를 비교하지 못했습니다.";
+        const message = error instanceof Error ? error.message : "사용 사례를 비교하지 못했어요.";
         setComparison({ status: "error", message });
       }
     } finally {

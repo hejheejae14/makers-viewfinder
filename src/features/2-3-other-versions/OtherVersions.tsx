@@ -26,7 +26,7 @@ export function OtherVersions({ screen, otherVersions }: OtherVersionsProps) {
       <h2 className={styles.heading}>다른 버전 함께 보기</h2>
       <p className={styles.description}>현재 화면: {screen.name} · {screen.teamPage}</p>
       {versions.length === 0 ? (
-        <Callout>전달받은 다른 버전 정보가 없습니다.</Callout>
+        <Callout>전달받은 다른 버전 정보가 없어요.</Callout>
       ) : (
         <ul className={styles.list}>
           {versions.map((version) => {
@@ -38,7 +38,7 @@ export function OtherVersions({ screen, otherVersions }: OtherVersionsProps) {
                 <p className={styles.description}>팀 페이지 · {version.teamPage}</p>
                 {href ? <TextButton href={href}>Figma에서 원본 열기</TextButton> : (
                   <>
-                    <p className={styles.description}>{mock ? "가짜 데이터 · 실제 Figma 원본이 아닙니다." : "원본 링크를 확인할 수 없습니다."}</p>
+                    <p className={styles.description}>{mock ? "가짜 데이터 · 실제 Figma 원본이 아니에요." : "원본 링크를 확인할 수 없어요."}</p>
                     <TextButton disabled>원본 열기 불가</TextButton>
                   </>
                 )}

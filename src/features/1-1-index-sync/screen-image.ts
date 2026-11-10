@@ -33,11 +33,11 @@ export async function handleScreenImageRequest(request: Request): Promise<Respon
   try {
     const figmaToken = await getSharedFigmaToken();
     const url = await getScreenImageUrl(nodeId, figmaToken, scale);
-    if (!url) return json({ error: "Figma에서 이 화면의 이미지를 만들지 못했습니다." }, 404);
+    if (!url) return json({ error: "Figma에서 이 화면의 이미지를 만들지 못했어요." }, 404);
     return json({ nodeId, url });
   } catch (error) {
     if (error instanceof FigmaTokenMissingError) return json({ error: error.message }, 503);
     if (error instanceof FigmaAccessError) return json({ error: error.message }, 403);
-    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났습니다." }, 500);
+    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났어요." }, 500);
   }
 }
