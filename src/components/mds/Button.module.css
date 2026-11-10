@@ -1,0 +1,131 @@
+/* MDS v2 Action Button (Figma: ✅ Button > Action Button) */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  overflow: hidden;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+.icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* ---------- size ---------- */
+
+.xsmall {
+  height: 32px;
+  gap: var(--mds-space-2);
+  padding: 0 var(--mds-space-12);
+  border-radius: var(--mds-radius-full);
+  font: var(--mds-label4);
+  letter-spacing: var(--mds-label4-letter-spacing);
+}
+
+.xsmall .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.small {
+  height: 38px;
+  gap: var(--mds-space-4);
+  padding: 0 var(--mds-space-12);
+  border-radius: var(--mds-radius-8);
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+}
+
+.small .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.medium {
+  height: 46px;
+  gap: var(--mds-space-4);
+  padding: 0 var(--mds-space-16);
+  border-radius: var(--mds-radius-10);
+  font: var(--mds-label2);
+  letter-spacing: var(--mds-label2-letter-spacing);
+}
+
+.medium .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.large {
+  height: 56px;
+  gap: var(--mds-space-4);
+  padding: 0 var(--mds-space-20);
+  border-radius: var(--mds-radius-12);
+  font: var(--mds-label1);
+  letter-spacing: var(--mds-label1-letter-spacing);
+}
+
+.large .icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---------- variant ---------- */
+
+.primary {
+  background: var(--mds-bg-neutral-inverse);
+  color: var(--mds-fg-neutral-inverse);
+}
+
+.primary:hover {
+  background: var(--mds-bg-neutral-inverse-hover);
+}
+
+.primary:active {
+  background: var(--mds-bg-neutral-inverse-pressed);
+}
+
+.secondary {
+  background: var(--mds-bg-neutral-subtle);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.secondary:hover {
+  background: var(--mds-bg-neutral-subtle-hover);
+}
+
+.secondary:active {
+  background: var(--mds-bg-neutral-subtle-pressed);
+}
+
+.danger {
+  background: var(--mds-bg-danger-default);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.danger:hover {
+  background: var(--mds-bg-danger-default-hover);
+}
+
+.danger:active {
+  background: var(--mds-bg-danger-default-pressed);
+}
+
+/* 비활성은 variant와 관계없이 같은 모양 */
+.button:disabled,
+.button:disabled:hover,
+.button:disabled:active {
+  background: var(--mds-bg-neutral-default-disabled);
+  color: var(--mds-fg-neutral-default-disabled);
+}
+
+.fullWidth {
+  width: 100%;
+}

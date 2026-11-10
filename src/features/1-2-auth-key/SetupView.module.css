@@ -1,0 +1,75 @@
+/* 1-2. 첫 진입 화면 (Figma: Viewfinder 와이어프레임 > 1-2. 첫 진입: 팀 비밀번호·API 키) */
+
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.logo {
+  font: var(--mds-title4);
+  letter-spacing: var(--mds-title4-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.tagline {
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: var(--mds-space-72) var(--mds-space-20);
+}
+
+/* MDS v2에 카드 컴포넌트가 없어, 토큰으로 상자 모양만 잡는다 (팀 확인 완료) */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+  width: 480px;
+  max-width: 100%;
+  height: fit-content;
+  padding: var(--mds-space-40);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-12);
+  background: var(--mds-bg-layer-layer-default);
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-8);
+}
+
+.heading {
+  font: var(--mds-title2);
+  letter-spacing: var(--mds-title2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.lead {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.apiKey {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mds-space-8);
+}
+
+.actions {
+  display: flex;
+  gap: var(--mds-space-12);
+}
+
+.actions > * {
+  flex: 1 0 0;
+  min-width: 0;
+}
