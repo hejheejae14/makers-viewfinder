@@ -1,6 +1,6 @@
 import "client-only";
 
-import type { SearchResponse, SearchResult, TeamPage } from "../../lib/types";
+import type { IndexedScreen, SearchResponse, SearchResult, TeamPage } from "../../lib/types";
 import { findCandidatesByConditions, type SearchCandidate, type SearchCondition } from "./candidate-search";
 import { loadTeamIndex } from "./index-client";
 
@@ -52,8 +52,17 @@ export async function searchTeam({ query, team, teamPassword, ai, signal }: Sear
 
   // 비밀번호가 틀렸거나 인덱스가 없으면 AI 호출 비용이 들지 않도록 인덱스를 먼저 확인합니다.
   const index = await loadTeamIndex({ team, teamPassword, signal });
+  return searchScreens({ query: normalizedQuery, team, screens: index.screens, ai, signal });
+}
+
+/** 관리자 프로토타입과 실제 검색이 같은 판정 흐름을 사용합니다. */
+export async function searchScreens({ query, team, screens, ai, signal }: {
+  query: string; team: TeamPage; screens: IndexedScreen[]; ai: SearchAi; signal?: AbortSignal;
+}): Promise<SearchResponse> {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) throw new Error("검색어를 입력해 주세요.");
   const interpretation = await ai.interpret({ query: normalizedQuery, team, signal });
-  const candidates = findCandidatesByConditions(index.screens, interpretation.conditions);
+  const candidates = findCandidatesByConditions(screens, interpretation.conditions);
   if (candidates.length === 0) return { query: normalizedQuery, team, results: [] };
 
   const judgements = await ai.judge({ query: normalizedQuery, team, candidates: toAiCandidates(candidates), signal });

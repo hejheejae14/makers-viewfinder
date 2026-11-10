@@ -1,0 +1,23 @@
+.page { max-width: 960px; margin: 0 auto; padding: 40px 24px; width: 100%; line-height: 1.65; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.header p { font-size: 12px; letter-spacing: .1em; }
+.header h1 { font-size: 28px; }
+.intro { margin: 8px 0 28px; }
+.panel { border: 1px solid currentColor; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+.panel h2 { font-size: 20px; margin-bottom: 12px; }
+.panel h3 { margin-top: 18px; }
+.panel h4 { margin-top: 12px; }
+.panel p { margin: 8px 0; }
+.fields { border: 0; display: grid; gap: 16px; min-width: 0; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row label { flex: 1; min-width: 220px; }
+.page label { display: grid; gap: 6px; margin: 8px 0; }
+.page input, .page textarea, .page select, .page button { font: inherit; color: inherit; background: var(--background); border: 1px solid currentColor; border-radius: 4px; padding: 10px 12px; max-width: 100%; }
+.page textarea { resize: vertical; }
+.page button, .page summary { cursor: pointer; }
+.page button:disabled { opacity: .5; cursor: wait; }
+.page ul { padding-left: 22px; }
+.page a { text-decoration: underline; display: inline-block; margin-top: 12px; }
+.page details { margin-top: 12px; overflow-wrap: anywhere; }
+.result { border-top: 1px solid currentColor; padding: 16px 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .page { padding: 24px 16px; } .panel { padding: 16px; } .header h1 { font-size: 23px; } }
