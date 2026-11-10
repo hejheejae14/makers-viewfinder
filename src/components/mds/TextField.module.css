@@ -31,7 +31,7 @@
 
 /* variant: Default는 지면 바로 위, Bold는 카드·모달처럼 채워진 배경 위 */
 .default .input {
-  background: var(--mds-bg-layer-layer-default);
+  background: var(--mds-field-surface, var(--mds-bg-layer-layer-default));
 }
 
 .bold .input {

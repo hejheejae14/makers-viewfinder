@@ -1,0 +1,152 @@
+/* 인덱스 동기화 모달·페이지 안쪽 배치. 색·글꼴·간격은 MDS 토큰만 쓴다. 보조 글은 14px(body2)다. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-16);
+}
+
+/* 인덱스 현황: 이름과 값을 한 줄씩 */
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-12);
+  padding: var(--mds-space-16);
+  border-radius: var(--mds-radius-10);
+  background: var(--mds-field-surface, var(--mds-bg-layer-layer-default));
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-8);
+}
+
+.rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mds-space-16);
+}
+
+.rows dt {
+  color: var(--mds-fg-neutral-default);
+}
+
+.rows dd {
+  color: var(--mds-fg-neutral-bold);
+  text-align: right;
+}
+
+.text {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-6);
+}
+
+.progressLine {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--mds-space-12);
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+/* 브라우저 기본 막대는 바탕이 흰색이라 비어 있어도 가득 찬 것처럼 보인다. 바탕과 채움을 따로 칠한다. */
+.progress progress {
+  appearance: none;
+  width: 100%;
+  height: var(--mds-space-6);
+  border: none;
+  border-radius: var(--mds-radius-8);
+  background: var(--mds-bg-neutral-subtle);
+  overflow: hidden;
+}
+
+.progress progress::-webkit-progress-bar {
+  background: var(--mds-bg-neutral-subtle);
+}
+
+.progress progress::-webkit-progress-value {
+  background: var(--mds-fg-secondary-default);
+  transition: width 0.2s ease;
+}
+
+.progress progress::-moz-progress-bar {
+  background: var(--mds-fg-secondary-default);
+}
+
+/* 버튼은 기본 크기 그대로 오른쪽에 붙인다 */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mds-space-8);
+}
+
+.details {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.details summary {
+  cursor: pointer;
+}
+
+.details ul {
+  padding-left: var(--mds-space-20);
+  margin-top: var(--mds-space-4);
+}
+
+.details p {
+  margin-top: var(--mds-space-4);
+}
+
+/* Figma 토큰: 동기화와 구분되는 아래쪽 한 줄 */
+.token {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-12);
+  padding-top: var(--mds-space-20);
+  border-top: 1px solid var(--mds-stroke-neutral-ghost);
+}
+
+.tokenRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mds-space-12);
+}
+
+.tokenInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-2);
+  min-width: 0;
+}
+
+.tokenLabel {
+  font: var(--mds-title5);
+  letter-spacing: var(--mds-title5-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.tokenForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-12);
+}

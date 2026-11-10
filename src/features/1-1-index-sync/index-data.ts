@@ -24,9 +24,9 @@ export async function handleIndexDataRequest(request: Request): Promise<Response
 
   try {
     const index = await getTeamIndex(team);
-    if (!index) return json({ error: `${team} 페이지는 아직 동기화한 적이 없습니다.` }, 404);
+    if (!index) return json({ error: `${team} 페이지는 아직 동기화한 적이 없어요.` }, 404);
     return json(index);
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났습니다." }, 500);
+    return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났어요." }, 500);
   }
 }

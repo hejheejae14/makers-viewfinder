@@ -93,24 +93,24 @@ async function generateRanking(input: string, key: string, signal?: AbortSignal)
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new Error("Gemini에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.");
+    throw new Error("Gemini에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
   }
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) throw new Error("Gemini API 키와 권한을 확인해 주세요.");
-    if (response.status === 429) throw new Error("Gemini 사용 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
-    throw new Error(`Gemini가 비교 요청을 처리하지 못했습니다. (${response.status})`);
+    if (response.status === 429) throw new Error("Gemini 사용 한도에 도달했어요. 잠시 후 다시 시도해 주세요.");
+    throw new Error(`Gemini가 비교 요청을 처리하지 못했어요. (${response.status})`);
   }
 
   const body = (await response.json().catch(() => null)) as GeminiResponse | null;
   const parts = body?.candidates?.[0]?.content?.parts;
   const text = Array.isArray(parts) && parts.filter((part) => !part.thought).map((part) => part.text ?? "").join("").trim();
-  if (!text) throw new Error("Gemini가 비교 결과를 돌려주지 않았습니다. 다시 시도해 주세요.");
+  if (!text) throw new Error("Gemini가 비교 결과를 돌려주지 않았어요. 다시 시도해 주세요.");
   return parseGeminiJson(text);
 }
 
 function joinRanking(ranking: unknown, offered: readonly MdsCaseCandidate[]): MdsComparedCase[] {
-  const invalidResponse = () => new Error("Gemini가 비교 결과를 올바르게 돌려주지 않았습니다. 다시 시도해 주세요.");
+  const invalidResponse = () => new Error("Gemini가 비교 결과를 올바르게 돌려주지 않았어요. 다시 시도해 주세요.");
   if (!Array.isArray(ranking)) throw invalidResponse();
 
   const results: MdsComparedCase[] = [];

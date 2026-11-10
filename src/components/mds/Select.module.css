@@ -28,6 +28,11 @@
   cursor: pointer;
 }
 
+/* variant: Bold(기본)는 채워진 배경 위, Default는 그보다 어두운 칸 (TextField와 같은 색 규칙) */
+.default .trigger {
+  background: var(--mds-field-surface, var(--mds-bg-layer-layer-default));
+}
+
 .trigger:focus-visible,
 .open .trigger {
   border-color: var(--mds-stroke-neutral-inverse);
@@ -67,6 +72,11 @@
   border-radius: var(--mds-radius-12);
   background: var(--mds-bg-neutral-ghost);
   list-style: none;
+}
+
+/* 모달처럼 ghost 배경 위에서 쓰는 default 변형은 메뉴도 입력칸과 같은 어두운 색으로 구분한다 */
+.default .menu {
+  background: var(--mds-bg-layer-layer-default);
 }
 
 .item {

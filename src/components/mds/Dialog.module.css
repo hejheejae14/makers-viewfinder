@@ -1,0 +1,109 @@
+/* MDS v2 Dialog (Figma: ✅ Dialog > Basic, Action=Default · Device=PC) */
+
+/* 배경 어둡게(dim)는 MDS 토큰, 상자 모양은 Figma 값 그대로: 배경 neutral/ghost, 안쪽 24, 세로 간격 20, 모서리 14 */
+.dialog {
+  /* 전역 스타일의 margin: 0이 브라우저 기본 가운데 정렬(margin: auto)을 지우므로 다시 지정한다 */
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  max-width: calc(100vw - var(--mds-space-40));
+  max-height: calc(100vh - var(--mds-space-40));
+  overflow: visible;
+}
+
+.dialog::backdrop {
+  background: var(--mds-bg-dim);
+}
+
+.surface {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+  width: 400px;
+  max-width: 100%;
+  max-height: calc(100vh - var(--mds-space-40));
+  padding: var(--mds-space-32);
+  /* 모달 안 입력칸·정보 박스는 모달 배경보다 한 단계 밝은 색을 쓴다 (참고: 알림 조회 모달) */
+  --mds-field-surface: var(--mds-bg-neutral-subtle);
+  overflow-y: auto;
+  border-radius: var(--mds-radius-14);
+  background: var(--mds-bg-neutral-ghost);
+}
+
+/* 입력칸이 들어가는 모달은 Figma 기본 폭(400)보다 넓게 쓴다 */
+.wide {
+  width: 560px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mds-space-12);
+}
+
+.text {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: var(--mds-space-12);
+  min-width: 0;
+}
+
+/* 제목 한 줄(높이 30) 가운데에 맞춘 닫기 아이콘 버튼 */
+.close {
+  display: grid;
+  flex-shrink: 0;
+  width: var(--mds-space-36);
+  height: var(--mds-space-36);
+  margin: 0 calc(var(--mds-space-6) * -1) 0 0;
+  place-items: center;
+  border: none;
+  border-radius: var(--mds-radius-8);
+  background: transparent;
+  cursor: pointer;
+}
+
+.close:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.close:hover:not(:disabled) {
+  background: var(--mds-bg-neutral-subtle);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--mds-stroke-neutral-inverse);
+}
+
+.title {
+  font: var(--mds-heading2);
+  letter-spacing: var(--mds-heading2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.description {
+  font: var(--mds-body1);
+  letter-spacing: var(--mds-body1-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+}
+
+/* Action Container: 버튼은 같은 폭으로 나란히 (Figma: gap 8) */
+.actions {
+  display: flex;
+  gap: var(--mds-space-8);
+}
+
+.actions > * {
+  flex: 1 0 0;
+  min-width: 0;
+}

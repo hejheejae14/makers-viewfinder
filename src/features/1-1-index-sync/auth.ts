@@ -15,9 +15,9 @@ export function json(body: unknown, status = 200) {
 export function authorize(request: Request): Response | undefined {
   const expected = process.env.TEAM_PASSWORD;
   // 서버에 비밀번호가 설정되어 있지 않으면 아무도 통과시키지 않는다. (열려 있는 상태로 두지 않는다.)
-  if (!expected) return json({ error: "서버에 팀 비밀번호(TEAM_PASSWORD)가 설정되어 있지 않습니다." }, 503);
+  if (!expected) return json({ error: "서버에 팀 비밀번호(TEAM_PASSWORD)가 설정되어 있지 않아요." }, 503);
 
   const given = request.headers.get("x-team-password") ?? "";
-  if (!timingSafeEqual(digest(given), digest(expected))) return json({ error: "팀 비밀번호가 맞지 않습니다." }, 401);
+  if (!timingSafeEqual(digest(given), digest(expected))) return json({ error: "팀 비밀번호가 맞지 않아요." }, 401);
   return undefined;
 }

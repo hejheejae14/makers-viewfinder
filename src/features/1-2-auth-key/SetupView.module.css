@@ -73,3 +73,19 @@
   flex: 1 0 0;
   min-width: 0;
 }
+
+/* 설정 모달: 버튼은 기본 크기 그대로 오른쪽에 붙인다 (입장 화면은 폭 전체) */
+.modalActions {
+  justify-content: flex-end;
+}
+
+.modalActions > * {
+  flex: 0 0 auto;
+}
+
+/* 설정 모달 안쪽: 카드 상자 없이 입력칸만 세로로 쌓는다 (모달 상자는 MDS Dialog가 그린다) */
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+}

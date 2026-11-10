@@ -20,6 +20,8 @@ export interface SelectProps {
   label?: ReactNode;
   description?: ReactNode;
   required?: boolean;
+  /** TextField와 같은 뜻: default는 지면 바로 위(더 어두운 칸), bold는 카드처럼 채워진 배경 위. 모달(neutral/ghost 배경) 안에서는 default를 쓴다. */
+  variant?: "default" | "bold";
   className?: string;
 }
 
@@ -31,6 +33,7 @@ export function Select({
   label,
   description,
   required,
+  variant = "bold",
   className,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
@@ -84,7 +87,7 @@ export function Select({
     }
   }
 
-  const classNames = [styles.field, open && styles.open, className].filter(Boolean).join(" ");
+  const classNames = [styles.field, styles[variant], open && styles.open, className].filter(Boolean).join(" ");
 
   return (
     <div className={classNames}>

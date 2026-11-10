@@ -9,7 +9,7 @@ export function parseGeminiJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error("Gemini가 검색 결과를 올바른 JSON 형식으로 돌려주지 않았습니다. 다시 시도해 주세요.");
+    throw new Error("Gemini가 검색 결과를 올바른 JSON 형식으로 돌려주지 않았어요. 다시 시도해 주세요.");
   }
 }
 
@@ -27,7 +27,7 @@ export function parseInterpretation(value: unknown): { conditions: SearchConditi
     return label && aliases.length > 0 ? [{ label, aliases }] : [];
   });
 
-  if (conditions.length === 0) throw new Error("Gemini가 검색 조건을 찾지 못했습니다. 검색어를 조금 더 구체적으로 입력해 주세요.");
+  if (conditions.length === 0) throw new Error("Gemini가 검색 조건을 찾지 못했어요. 검색어를 조금 더 구체적으로 입력해 주세요.");
   return { conditions };
 }
 
@@ -60,5 +60,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function invalidResponse() {
-  return new Error("Gemini가 예상과 다른 검색 결과를 돌려줬습니다. 다시 시도해 주세요.");
+  return new Error("Gemini가 예상과 다른 검색 결과를 돌려줬어요. 다시 시도해 주세요.");
 }

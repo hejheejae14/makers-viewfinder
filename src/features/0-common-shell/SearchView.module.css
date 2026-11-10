@@ -1,0 +1,116 @@
+/* 검색 → 결과 → 비교를 잇는 임시 배치입니다. 각 기능 화면의 모양은 그대로 두고, 여기서는 위치와 간격만 잡습니다. */
+/* 값은 모두 MDS 토큰만 씁니다. 2-1 검색 화면이 합쳐지면 검색창과 결과 목록 부분을 교체합니다. */
+
+.navigation {
+  border-bottom: 1px solid var(--mds-stroke-neutral-ghost);
+}
+
+.wordmark {
+  color: var(--mds-fg-neutral-bold);
+  font: var(--mds-title4);
+  letter-spacing: var(--mds-title4-letter-spacing);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-20);
+}
+
+.synced {
+  color: var(--mds-fg-neutral-subtle);
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+}
+
+.page {
+  display: grid;
+  gap: var(--mds-space-20);
+  width: min(100%, 80rem);
+  margin-inline: auto;
+  padding: var(--mds-space-24) var(--mds-space-32) var(--mds-space-64);
+}
+
+.searchBar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--mds-space-12);
+}
+
+.team {
+  flex: 0 0 8.25rem;
+}
+
+.query {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 22.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--mds-space-20);
+}
+
+.results {
+  display: grid;
+  gap: var(--mds-space-12);
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: var(--mds-space-4);
+  width: 100%;
+  padding: var(--mds-space-16);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-8);
+  background: var(--mds-bg-layer-layer-default);
+  color: var(--mds-fg-neutral-default);
+  font: var(--mds-body2);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item[aria-pressed="true"] {
+  border-color: var(--mds-fg-secondary-default);
+}
+
+.verdict {
+  color: var(--mds-fg-secondary-default);
+  font: var(--mds-label4);
+}
+
+.meta {
+  color: var(--mds-fg-neutral-subtle);
+  font: var(--mds-body3);
+}
+
+.detail {
+  display: grid;
+  gap: var(--mds-space-20);
+  min-width: 0;
+}
+
+/* 2-2 화면 정보를 감싸는 상자. /preview/screen-info 확인 페이지와 같은 모양이다. */
+.panel {
+  padding: var(--mds-space-24);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-12);
+  background: var(--mds-bg-layer-layer-default);
+}
+
+.compare {
+  display: grid;
+  gap: var(--mds-space-24);
+  width: min(100%, 66rem);
+  margin-inline: auto;
+  padding: var(--mds-space-32) var(--mds-space-24) var(--mds-space-64);
+}
+
+@media (max-width: 960px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

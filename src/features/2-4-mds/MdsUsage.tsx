@@ -14,7 +14,7 @@ export function MdsUsage({ screen }: MdsUsageProps) {
   return (
     <section className={styles.panel} aria-label="MDS 컴포넌트와 토큰">
       <h2 className={styles.heading}>MDS 컴포넌트·토큰</h2>
-      <p className={styles.description}>{screen.name}에 기록된 정보입니다.</p>
+      <p className={styles.description}>{screen.name}에 기록된 정보예요.</p>
       <h3 className={styles.subheading}>컴포넌트 · {components.length}</h3>
       {components.length ? (
         <ul className={styles.list}>
@@ -31,11 +31,11 @@ export function MdsUsage({ screen }: MdsUsageProps) {
             </li>
           ))}
         </ul>
-      ) : <Callout>{screen.elements?.length === 0 ? "이 화면에는 MDS 컴포넌트가 없는 것으로 기록되어 있습니다." : "기록된 MDS 컴포넌트 정보가 없습니다. 미사용 여부는 확인할 수 없습니다."}</Callout>}
+      ) : <Callout>{screen.elements?.length === 0 ? "이 화면에는 MDS 컴포넌트가 없는 것으로 기록되어 있어요." : "기록된 MDS 컴포넌트 정보가 없어요. 미사용 여부는 확인할 수 없어요."}</Callout>}
       <h3 className={styles.subheading}>토큰 · {tokens.length}</h3>
       {tokens.length ? (
         <ul className={styles.tokens}>{tokens.map((token) => <li className={styles.tag} key={token}>{token}</li>)}</ul>
-      ) : <Callout>기록된 MDS 토큰 정보가 없습니다.</Callout>}
+      ) : <Callout>기록된 MDS 토큰 정보가 없어요.</Callout>}
     </section>
   );
 }
