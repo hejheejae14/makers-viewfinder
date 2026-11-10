@@ -9,11 +9,11 @@
 
 1. 배포 주소의 `/sync` 접속
 2. 팀 비밀번호 입력 (팀 채널에서 확인)
-3. 본인 Figma 개인 토큰 입력
-   - Figma → Settings → Security → Personal access tokens에서 생성
+3. 팀 공용 Figma 토큰이 등록되어 있는지 확인 (처음 한 번, 또는 만료됐을 때 `/sync` 아래 "팀 공용 Figma 토큰"에서 등록·교체)
+   - Figma → Settings → Security → Personal access tokens에서 생성 (기간은 최대로, 약 90일)
    - 권한은 읽기 전용 2가지만 선택: 파일 내용 읽기, 디자인 시스템(컴포넌트·스타일) 읽기
    - `[PD] 문서 모음`과 MDS v1·v2 파일을 볼 수 있는 계정 필요
-   - 토큰은 입력한 브라우저에만 저장, 서버에는 저장하지 않음 (AGENTS.md 원칙)
+   - 등록한 토큰은 인덱스와 같은 저장소(Redis)에 보관하며 화면·응답·로그에 다시 보여 주지 않음. 동기화하는 사람마다 입력하지 않음
 4. 팀 페이지 선택 후 "처음부터 동기화"
 5. 끝날 때까지 화면 유지 (앱 약 1분, 구역이 많은 페이지는 15분 이상 소요 가능)
 
@@ -42,8 +42,13 @@ index?.screens; // IndexedScreen[]
 ## 화면 이미지 (2-4 등)
 
 - 디자인 원본은 저장하지 않으므로 화면 이미지는 필요할 때마다 Figma에서 받아 옴
+- 동기화와 이미지는 `/sync`에서 등록한 팀 공용 Figma 토큰(읽기 전용) 하나로 Figma를 읽음 (`figma-token.ts`)
+  - `POST /api/figma-token` (헤더 `x-team-password`, 본문 `{ "action": "status" | "set" | "clear", "token"? }`, 응답 `{ configured, savedAt }`)
+  - 토큰은 유효기간이 있음(최대 약 90일). 만료되면 동기화·이미지 API가 "토큰이 만료됐습니다" 안내를 돌려주므로 `/sync`에서 새 토큰으로 교체
+  - 토큰이 등록되어 있지 않으면 503
+  - ※ 팀 합의 전: AGENTS.md의 "Figma 토큰은 브라우저에만 저장"과 달라지는 부분이라 채널 합의 후 병합
 - `POST /api/screen-image`
-  - 헤더: `x-team-password`, `x-figma-token`
+  - 헤더: `x-team-password`
   - 본문: `{ "nodeId": "202:18381", "scale": 1 }`
   - 응답: `{ "nodeId": "...", "url": "임시 이미지 주소" }`
 - 임시 주소는 일정 시간 후 만료되므로 보여 줄 때마다 새로 요청
@@ -75,7 +80,8 @@ index?.screens; // IndexedScreen[]
 | `handler.ts` | `POST /api/index-sync` 처리 (상태, 시작, 이어 읽기) |
 | `screen-image.ts` | `POST /api/screen-image` 처리 |
 | `index-data.ts` | `POST /api/index-data` 처리 (저장된 인덱스 반환) |
-| `auth.ts` | 팀 비밀번호 확인, Figma 토큰 헤더 읽기 |
+| `auth.ts` | 팀 비밀번호 확인 |
+| `figma-token.ts` | 팀 공용 Figma 토큰 등록·삭제·읽기, `POST /api/figma-token` 처리 |
 
 공통 영역의 연결 파일 (`src/app`)
 - `api/index-sync/route.ts`, `api/screen-image/route.ts`, `api/index-data/route.ts`: 위 처리 함수 연결
@@ -89,12 +95,12 @@ index?.screens; // IndexedScreen[]
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Redis 접속 정보 (Vercel에서 Redis 연결 시 자동 생성) |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | 위와 같은 용도의 다른 이름 (둘 중 하나만 있으면 동작) |
 
-- Figma 토큰은 환경 변수로 두지 않음 (동기화하는 사람이 화면에 입력)
+- Figma 토큰은 환경 변수로 두지 않음 (`/sync` 화면에서 등록하면 Redis에 보관)
 - 배포 환경에서 Redis 설정이 없으면 임시 저장 없이 오류로 중단
 
 ## 알아둘 점
 
-- 동기화 결과는 동기화하는 사람의 Figma 접근 권한에 따라 달라질 수 있음 (일부 파일을 못 보는 계정이면 일부만 생성)
+- 동기화 결과는 공용 토큰 계정의 Figma 접근 권한에 따라 달라질 수 있음 (일부 파일을 못 보는 계정이면 일부만 생성)
 - 컴포넌트가 MDS 파일 목록에 없으면 MDS가 아닌 것으로 판정
 - 스크롤해야 보이는 화면 아래쪽 내용이 프레임 밖에 있으면 검색 대상에서 제외
 - Figma 파일 읽기만 수행 (생성, 수정, 이동, 삭제 코드 없음)
