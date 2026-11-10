@@ -3,15 +3,15 @@ import { MDS_LIBRARIES, type MdsComponentKeys, type MdsKeys, type MdsStyleKeys }
 /**
  * Figma에서 읽어 옵니다. (읽기 전용: GET 요청만 보냅니다.)
  *
- * Figma 토큰은 동기화하는 사람이 자기 브라우저에 보관한 개인 토큰이며, 요청마다 받아 그 요청에서만 씁니다.
- * 서버에 저장하지 않고, 로그나 오류 메시지에도 출력하지 않습니다. (AGENTS.md: Figma 토큰도 브라우저에만 저장)
+ * Figma 토큰은 /sync에서 등록한 팀 공용 읽기 전용 토큰(figma-token.ts)입니다.
+ * 로그나 오류 메시지에는 출력하지 않습니다.
  */
 
-/** 받은 Figma 토큰으로 필요한 파일을 읽을 수 없을 때 (토큰이 틀렸거나 만료됐거나 파일 접근 권한이 없음) */
+/** 팀 공용 Figma 토큰으로 필요한 파일을 읽을 수 없을 때 (토큰이 틀렸거나 만료됐거나 파일 접근 권한이 없음) */
 export class FigmaAccessError extends Error {
   constructor() {
     super(
-      "이 Figma 토큰으로는 필요한 파일을 읽을 수 없습니다. 토큰이 맞는지, 만료되지 않았는지, 그리고 [PD] 문서 모음과 MDS 파일을 볼 수 있는 계정인지 확인하세요.",
+      "팀 공용 Figma 토큰으로 필요한 파일을 읽을 수 없습니다. 토큰이 맞는지, 만료되지 않았는지, 그리고 [PD] 문서 모음과 MDS 파일을 볼 수 있는 계정인지 확인한 뒤 /sync 화면에서 새 토큰을 등록하세요.",
     );
   }
 }
