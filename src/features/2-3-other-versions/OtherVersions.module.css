@@ -1,0 +1,13 @@
+.panel {
+  padding: var(--mds-space-24);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-16);
+  background: var(--mds-bg-layer-layer-default);
+  min-width: 0;
+}
+.heading { margin: 0 0 var(--mds-space-8); font: var(--mds-heading3); letter-spacing: var(--mds-heading3-letter-spacing); }
+.description { margin: 0 0 var(--mds-space-16); color: var(--mds-fg-neutral-subtle); overflow-wrap: anywhere; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--mds-space-12); }
+.item { padding: var(--mds-space-16); border: 1px solid var(--mds-stroke-neutral-ghost); border-radius: var(--mds-radius-8); min-width: 0; }
+.name { margin: 0 0 var(--mds-space-8); font: var(--mds-heading4); letter-spacing: var(--mds-heading4-letter-spacing); overflow-wrap: anywhere; }
+.preview { max-width: 960px; margin: 0 auto; padding: var(--mds-space-24); display: grid; gap: var(--mds-space-24); }
