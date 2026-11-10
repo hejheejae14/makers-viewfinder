@@ -1,0 +1,18 @@
+/* 확인용 페이지: 와이어프레임의 Detail 패널(836px) 크기로 감싼다 */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mds-space-24);
+  padding: var(--mds-space-40) var(--mds-space-20);
+}
+
+.panel {
+  width: 836px;
+  max-width: 100%;
+  padding: var(--mds-space-24);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-12);
+  background: var(--mds-bg-layer-layer-default);
+}
