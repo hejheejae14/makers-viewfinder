@@ -3,6 +3,7 @@ export { Button, type ButtonProps } from "./Button";
 export { Callout, type CalloutProps } from "./Callout";
 export { Dialog, type DialogProps } from "./Dialog";
 export { Select, type SelectOption, type SelectProps } from "./Select";
+export { Tag, type TagProps } from "./Tag";
 export { TextButton, type TextButtonProps } from "./TextButton";
 export { TextField, type TextFieldProps } from "./TextField";
 export { TopNavigation, type TopNavigationProps } from "./TopNavigation";

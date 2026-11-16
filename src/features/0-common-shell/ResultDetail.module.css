@@ -1,0 +1,332 @@
+/* 검색 결과 상세: 박스 없이 이름·값을 한 줄씩. 값은 MDS 토큰만 쓴다. */
+
+/* 이미지가 위에 크게, 정보는 그 아래. (Figma: W1920/프로젝트 상세_Desktop의 대표 이미지 영역과 같은 16:9) */
+.detail {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-space-24);
+}
+
+/* 이미지 영역: 높이는 고정하고, 폭은 이미지 폭에 맞춰 줄어든다. (상세 영역보다 넓어지면 거기까지만)
+   긴 화면은 틀 안에서 위아래로 스크롤해서 보고, 눌러서 크게 볼 수도 있다. 옅은 선을 두른다. */
+.thumbnail {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  /* 데스크탑 화면 비율(1920x1080 = 16:9)에 맞춘 높이. 폭이 줄면 높이도 같이 줄어든다. */
+  height: calc(100cqw * 9 / 16);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-10);
+  background: var(--mds-bg-neutral-ghost);
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+  text-align: center;
+}
+
+/* 모바일 화면: 틀 폭을 실제 폰 비율(9:19.5)로 좁히고, 이미지는 그 폭에 맞춘다 */
+.portrait {
+  /* 높이는 데스크탑 틀과 같게 두고, 폭만 폰 비율로 */
+  width: calc(100cqw * 9 / 16 * 9 / 19.5);
+}
+
+.portrait .thumbnailImage {
+  width: 100%;
+}
+
+/* 누르면 크게 볼 수 있다 */
+.zoomable {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
+.zoomable:focus-visible {
+  outline: 2px solid var(--mds-stroke-neutral-inverse);
+}
+
+/* 이미지는 틀 폭에 맞춘다. (원래 크기보다 키우지는 않는다.) */
+.thumbnailImage {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mds-space-16);
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--mds-space-12);
+  width: 100%;
+}
+
+.name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font: var(--mds-title3);
+  letter-spacing: var(--mds-title3-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.text {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-default);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--mds-space-12) var(--mds-space-16);
+  width: 100%;
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+}
+
+.facts dt {
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.facts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--mds-fg-neutral-bold);
+}
+
+.lines {
+  display: grid;
+  gap: var(--mds-space-4);
+  list-style: none;
+}
+
+/* MDS 컴포넌트·토큰: 정보 목록과 선으로 구분하고, 한 줄에 하나씩 읽기 쉽게 */
+.section {
+  display: grid;
+  gap: var(--mds-space-12);
+  width: 100%;
+  padding-top: var(--mds-space-24);
+  border-top: 1px solid var(--mds-stroke-neutral-subtle);
+}
+
+/* 표 밑(MDS 토큰 앞)에는 구분선을 두지 않는다 */
+.section + .section {
+  border-top: none;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mds-space-8);
+  font: var(--mds-title4);
+  letter-spacing: var(--mds-title4-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.count {
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.rows {
+  list-style: none;
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+}
+
+/* 토큰은 넓으면 두 줄로 나란히 */
+.tokenRows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  column-gap: var(--mds-space-24);
+}
+
+.plain,
+.item summary {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-8);
+  min-height: 28px;
+  padding-block: var(--mds-space-4);
+}
+
+.rowName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--mds-fg-neutral-bold);
+}
+
+.sub {
+  color: var(--mds-fg-neutral-subtle);
+}
+
+/* 좁은 화면: 이름과 값을 위아래로 */
+@media (max-width: 640px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mds-space-4);
+  }
+
+  .facts dd {
+    margin-bottom: var(--mds-space-8);
+  }
+}
+
+/* MDS 컴포넌트 표: 버전 / 컴포넌트 이름 / 상세 설정. 표 전체를 박스 하나로 감싼다. */
+.tableBox {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-10);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  text-align: left;
+}
+
+/* 세로줄은 기본 구분선 색(subtle), 가로줄은 한 단계 낮춘 색(ghost)으로 둔다. */
+.table th,
+.table td {
+  padding: var(--mds-space-12) var(--mds-space-16);
+}
+
+.table th:first-child,
+.table .cellVersion {
+  width: 7rem;
+  vertical-align: top;
+}
+
+/* 버전 글자: 본문(body2, 400)보다 한 단계 굵은 label3(600) */
+.table .cellVersion {
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+}
+
+.table th {
+  border-bottom: 1px solid var(--mds-stroke-neutral-ghost);
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.table td {
+  border-bottom: 1px solid var(--mds-stroke-neutral-ghost);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+/* 이름 칸과 상세 설정 칸 앞에 세로줄 */
+.table th:nth-child(n + 2),
+.table .cellName,
+.table .cellDetail {
+  border-left: 1px solid var(--mds-stroke-neutral-subtle);
+}
+
+/* 박스 테두리와 겹치지 않게 마지막 줄 아래 선은 뺀다 */
+.table tbody tr:last-child td,
+.table .cellVersionLast {
+  border-bottom: none;
+}
+
+.table th:nth-child(2),
+.table .cellName {
+  width: 35%;
+}
+
+.cellName {
+  color: var(--mds-fg-neutral-bold);
+}
+
+/* 상세 설정이 여러 개면 서로 다른 컴포넌트라서, 줄 사이에 가로줄(ghost)을 둔다. 줄 여백은 칸 대신 각 줄이 가진다. */
+.table .cellDetail {
+  padding: 0;
+}
+
+.cellLines {
+  list-style: none;
+  color: var(--mds-fg-neutral-default);
+}
+
+.cellLines li,
+.cellEmpty {
+  display: block;
+  padding: var(--mds-space-12) var(--mds-space-16);
+}
+
+.cellLines li + li {
+  border-top: 1px solid var(--mds-stroke-neutral-ghost);
+}
+
+/* 이미지 불러오는 중: 틀은 그대로 두고 안을 반짝이는 스켈레톤으로 채운다.
+   (이미지가 들어오면 같은 자리에서 부드럽게 나타난다) */
+.loading:not(.portrait) {
+  width: 100%;
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--mds-bg-neutral-ghost);
+}
+
+/* 반짝이는 띠: 배경을 다시 그리지 않고 transform으로만 움직여서 부드럽게 흐른다 */
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* 가운데가 뾰족하지 않게 여러 단계로 부드럽게 퍼뜨려, 띠의 가장자리가 선처럼 보이지 않게 한다 */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--mds-bg-neutral-subtle) 25%, transparent) 25%,
+    color-mix(in srgb, var(--mds-bg-neutral-subtle) 60%, transparent) 50%,
+    color-mix(in srgb, var(--mds-bg-neutral-subtle) 25%, transparent) 75%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.6s linear infinite;
+  will-change: transform;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
+
+.thumbnailImage {
+  transition: opacity 0.2s ease;
+}
+
+.hidden {
+  opacity: 0;
+}

@@ -9,12 +9,15 @@
 
 html {
   height: 100%;
+  /* 결과가 사라져 페이지가 짧아질 때 스크롤바가 없어지며 화면이 옆으로 밀리지 않게, 스크롤바 자리를 항상 비워 둔다. */
+  scrollbar-gutter: stable;
 }
 
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  /* hidden은 body를 스크롤 상자로 만들어 sticky가 먹지 않는다. clip은 같은 효과에 그러지 않는다. */
+  overflow-x: clip;
 }
 
 body {
@@ -38,4 +41,37 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* 스크롤바: 기본은 굵고 가장자리에 딱 붙어 답답하다. 얇은 막대를 안쪽으로 띄워 MDS 색으로 그린다. */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 4px solid transparent;
+    border-radius: var(--mds-radius-8);
+    background: var(--mds-stroke-neutral-default) padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--mds-stroke-neutral-default-focused) padding-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--mds-stroke-neutral-default) transparent;
+  }
 }
