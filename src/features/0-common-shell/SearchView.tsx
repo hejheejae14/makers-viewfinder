@@ -11,14 +11,14 @@ import {
   TextField,
   TopNavigation,
 } from "@/components/mds";
+import { LoadingDots } from "./LoadingDots";
+import { ResultDetail } from "./ResultDetail";
+import { ResultsPane } from "./ResultsPane";
 import { SyncPanel } from "@/features/1-1-index-sync/SyncPanel";
 import { SetupForm } from "@/features/1-2-auth-key/SetupView";
 import { loadTeamIndex } from "@/features/2-1-search/index-client";
 import { createGeminiSearchAi } from "@/features/2-1-search/gemini";
 import { searchTeam } from "@/features/2-1-search/search";
-import { ScreenInfo } from "@/features/2-2-screen-info/ScreenInfo";
-import { OtherVersions } from "@/features/2-3-other-versions/OtherVersions";
-import { MdsUsage } from "@/features/2-4-mds/MdsUsage";
 import { AiHandoff } from "@/features/3-1-ai-handoff/AiHandoff";
 import { MdsCompare } from "@/features/3-2-mds-v2-compare/MdsCompare";
 import { useSession } from "@/lib/session";
@@ -31,7 +31,7 @@ import type {
 import styles from "./SearchView.module.css";
 
 // 0. 공통 뼈대: 검색 → 결과 확인(2-2 ~ 2-4, 3-1) → MDS v2 사용 사례 비교(3-2)를 한 흐름으로 잇는다.
-// 각 기능의 화면(ScreenInfo, OtherVersions, MdsUsage, AiHandoff, MdsCompare)은 모양을 바꾸지 않고 그대로 가져다 쓴다.
+// 화면 정보·다른 버전·MDS는 ResultDetail이 박스 없는 글 목록으로 보여 주고, AiHandoff와 MdsCompare는 모양을 바꾸지 않고 그대로 가져다 쓴다.
 // 2-1 검색 화면은 아직 합쳐진 디자인이 없어, MDS 부품만 쓴 임시 검색창과 결과 목록을 둔다. 2-1 화면이 합쳐지면 이 부분만 교체한다.
 // 팀 비밀번호와 개인 API 키는 1-2에서 이 브라우저에 저장한 값을 쓴다.
 
@@ -39,19 +39,47 @@ const TEAMS: TeamPage[] = ["앱", "플그", "크루", "공홈", "어드민"];
 const TEAM_OPTIONS = TEAMS.map((team) => ({ value: team, label: team }));
 
 type Phase =
-  | { status: "idle" | "loading" }
+  | { status: "idle" }
+  // previous: 새로 찾는 동안 이전 결과를 그대로 보여 주기 위해 들고 있는다.
+  | { status: "loading"; previous?: SearchResponse }
   | { status: "ready"; response: SearchResponse }
   | { status: "error"; message: string };
 
-export function SearchView() {
+// previewResponse: 확인용 페이지(/preview/search)가 AI 검색 없이 만든 결과로 이 화면을 그대로 띄울 때만 쓴다.
+// 이때는 로그인 확인과 인덱스 읽기를 하지 않는다. (화면 이미지는 평소처럼 받는다.)
+// 검색창이 위에 붙어 있으므로, 그 아래에 붙여야 하는 것(펼친 결과의 제목 줄)이 높이를 알 수 있게 CSS 변수로 알려 준다.
+function trackSearchBarHeight(bar: HTMLFormElement | null) {
+  const page = bar?.parentElement;
+  if (!bar || !page) return;
+  const update = () =>
+    page.style.setProperty("--search-bar-height", `${bar.offsetHeight}px`);
+  update();
+  const observer = new ResizeObserver(update);
+  observer.observe(bar);
+  return () => observer.disconnect();
+}
+
+export function SearchView({
+  previewResponse,
+}: {
+  previewResponse?: SearchResponse;
+}) {
   const router = useRouter();
   const session = useSession();
   const request = useRef<AbortController | null>(null);
-  const [team, setTeam] = useState<TeamPage>("앱");
-  const [query, setQuery] = useState("");
-  const [phase, setPhase] = useState<Phase>({ status: "idle" });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamPage>(previewResponse?.team ?? "앱");
+  const [query, setQuery] = useState(previewResponse?.query ?? "");
+  const [phase, setPhase] = useState<Phase>(
+    previewResponse
+      ? { status: "ready", response: previewResponse }
+      : { status: "idle" },
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(
+    previewResponse?.results[0]?.screen.id ?? null,
+  );
   const [comparing, setComparing] = useState(false);
+  // 좁은 화면에서 목록 대신 상세를 보여 줄지
+  const [detailOpen, setDetailOpen] = useState(false);
   // 설정과 인덱스 동기화는 이 화면 위에 모달로 띄운다.
   const [modal, setModal] = useState<"settings" | "sync" | null>(null);
   const [syncBusy, setSyncBusy] = useState(false);
@@ -64,14 +92,14 @@ export function SearchView() {
 
   // 저장된 설정이 없으면 첫 진입 화면으로 보낸다.
   useEffect(() => {
-    if (session === null) router.replace("/setup");
-  }, [session, router]);
+    if (session === null && !previewResponse) router.replace("/setup");
+  }, [session, router, previewResponse]);
 
   // 선택한 팀의 인덱스를 읽어 둔다. (3-2 비교 후보와 마지막 동기화 날짜에 쓴다.)
   const password = session?.password;
   const index = indexes[team];
   useEffect(() => {
-    if (!password || index !== undefined) return;
+    if (!password || index !== undefined || previewResponse) return;
     const controller = new AbortController();
     loadTeamIndex({ team, teamPassword: password, signal: controller.signal })
       .then((loaded) =>
@@ -82,11 +110,16 @@ export function SearchView() {
           setIndexes((current) => ({ ...current, [team]: "error" }));
       });
     return () => controller.abort();
-  }, [team, password, index]);
+  }, [team, password, index, previewResponse]);
 
   useEffect(() => () => request.current?.abort(), []);
 
-  const results = phase.status === "ready" ? phase.response.results : [];
+  const results =
+    phase.status === "ready"
+      ? phase.response.results
+      : phase.status === "loading"
+        ? (phase.previous?.results ?? [])
+        : [];
   const selected: SearchResult | undefined = results.find(
     (result) => result.screen.id === selectedId,
   );
@@ -137,7 +170,7 @@ export function SearchView() {
     return () => controller.abort();
   }, [password, selectedScreenId, imageKnown]);
 
-  if (!session) return null;
+  if (!session && !previewResponse) return null;
 
   async function search(event: FormEvent) {
     event.preventDefault();
@@ -145,8 +178,16 @@ export function SearchView() {
     const controller = new AbortController();
     request.current?.abort();
     request.current = controller;
-    setPhase({ status: "loading" });
-    setSelectedId(null);
+    // 이전 결과와 선택은 새 결과가 올 때까지 그대로 둔다.
+    setPhase((current) => ({
+      status: "loading",
+      previous:
+        current.status === "ready"
+          ? current.response
+          : current.status === "loading"
+            ? current.previous
+            : undefined,
+    }));
     try {
       const ai = createGeminiSearchAi(session.apiKey);
       const response = await searchTeam({
@@ -188,7 +229,7 @@ export function SearchView() {
             <MdsCompare
               result={selected}
               screens={index.screens}
-              apiKey={session.apiKey}
+              apiKey={session?.apiKey ?? ""}
             />
           ) : index === "error" ? (
             <Callout tone="danger">
@@ -204,7 +245,7 @@ export function SearchView() {
   }
 
   return (
-    <>
+    <div>
       <TopNavigation
         className={styles.navigation}
         title={wordmark}
@@ -237,10 +278,17 @@ export function SearchView() {
         size="wide"
         title="인덱스 동기화"
       >
-        <SyncPanel password={session.password} onBusyChange={setSyncBusy} />
+        <SyncPanel
+          password={session?.password ?? ""}
+          onBusyChange={setSyncBusy}
+        />
       </Dialog>
       <main className={styles.page}>
-        <form className={styles.searchBar} onSubmit={search}>
+        <form
+          className={styles.searchBar}
+          onSubmit={search}
+          ref={trackSearchBarHeight}
+        >
           <div className={styles.team}>
             <Select
               label="팀"
@@ -264,15 +312,20 @@ export function SearchView() {
           <Button
             type="submit"
             disabled={phase.status === "loading" || !query.trim()}
+            aria-label={phase.status === "loading" ? "찾는 중" : undefined}
           >
-            {phase.status === "loading" ? "찾는 중…" : "검색"}
+            {phase.status === "loading" ? (
+              <LoadingDots reserve="검색" />
+            ) : (
+              "검색"
+            )}
           </Button>
         </form>
 
         {phase.status === "idle" && (
           <Callout>팀을 고르고 찾고 싶은 화면이나 기능을 적어 주세요.</Callout>
         )}
-        {phase.status === "loading" && (
+        {phase.status === "loading" && results.length === 0 && (
           <Callout>검색 인덱스에서 화면을 찾고 있어요.</Callout>
         )}
         {phase.status === "error" && (
@@ -285,58 +338,39 @@ export function SearchView() {
         )}
 
         {results.length > 0 && (
-          <div className={styles.content}>
-            <ul className={styles.results} aria-label="검색 결과">
-              {results.map((result) => (
-                <li key={result.screen.id}>
-                  <button
-                    type="button"
-                    className={styles.item}
-                    aria-pressed={result.screen.id === selectedId}
-                    onClick={() => setSelectedId(result.screen.id)}
-                  >
-                    <span className={styles.verdict}>{result.verdict}</span>
-                    <strong>{result.screen.name}</strong>
-                    <span className={styles.meta}>
-                      {[result.screen.teamPage, result.screen.section]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {selected && (
-              <div className={styles.detail}>
-                <div className={styles.panel}>
-                  <ScreenInfo
+          <ResultsPane
+            results={results}
+            selectedId={selectedId}
+            detailOpen={detailOpen}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setDetailOpen(true);
+            }}
+            onClose={() => setDetailOpen(false)}
+            detail={
+              selected && (
+                <div className={styles.detail}>
+                  <ResultDetail
                     result={selected}
                     thumbnailUrl={imageUrls[selected.screen.id]}
-                    thumbnailNote={
-                      imageErrors[selected.screen.id] ??
-                      (imageUrls[selected.screen.id]
-                        ? undefined
-                        : "이미지를 불러오는 중…")
+                    thumbnailLoading={
+                      !imageUrls[selected.screen.id] &&
+                      !imageErrors[selected.screen.id]
                     }
+                    thumbnailNote={imageErrors[selected.screen.id]}
                   />
+                  <div>
+                    <Button onClick={() => setComparing(true)}>
+                      MDS v2 사용 사례 비교
+                    </Button>
+                  </div>
+                  <AiHandoff result={selected} />
                 </div>
-                <OtherVersions
-                  screen={selected.screen}
-                  otherVersions={selected.otherVersions}
-                />
-                <MdsUsage screen={selected.screen} />
-                <div>
-                  <Button onClick={() => setComparing(true)}>
-                    MDS v2 사용 사례 비교
-                  </Button>
-                </div>
-                <AiHandoff result={selected} />
-              </div>
-            )}
-          </div>
+              )
+            }
+          />
         )}
       </main>
-    </>
+    </div>
   );
 }

@@ -1,0 +1,144 @@
+/* 이미지 확대 보기. 뒤는 MDS 딤 토큰, 나머지도 MDS 토큰만 쓴다. */
+
+.viewer {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mds-fg-neutral-bold);
+}
+
+/* 가장 어두운 MDS 딤(--mds-bg-dim)을 두 겹으로 깔고, 뒤 화면은 살짝 흐리게 한다. */
+.viewer::backdrop {
+  background:
+    linear-gradient(var(--mds-bg-dim), var(--mds-bg-dim)),
+    linear-gradient(var(--mds-bg-dim), var(--mds-bg-dim));
+  backdrop-filter: blur(2px);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 이미지와 컴포넌트 박스가 한 덩어리로 확대·이동한다. 박스 겹침 순서는 이 안에서만 적용한다. */
+.sheet {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+}
+
+/* 평소에는 보이지 않다가 마우스를 올리면 얇은 박스가 뜬다. 확대해도 화면에서 보이는 선 굵기는 1px로 유지한다. */
+.hit {
+  position: absolute;
+  cursor: inherit;
+}
+
+/* outline은 0.5px처럼 가는 값도 1px로 올려 그려서, 확대하면 두꺼워진다. 그림자 테두리는 가는 값 그대로 그려진다. */
+.hitOn {
+  box-shadow: 0 0 0 calc(1px / var(--zoom, 1)) var(--mds-stroke-neutral-inverse);
+  background: color-mix(
+    in srgb,
+    var(--mds-bg-neutral-inverse) 12%,
+    transparent
+  );
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 10;
+  display: grid;
+  justify-items: start;
+  gap: var(--mds-space-4);
+  width: max-content;
+  max-width: 280px;
+  padding: var(--mds-space-12);
+  border: 1px solid var(--mds-stroke-neutral-subtle);
+  border-radius: var(--mds-radius-8);
+  background: var(--mds-bg-layer-layer-basement);
+  pointer-events: none;
+}
+
+.tooltipTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-8);
+}
+
+.tooltipName {
+  font: var(--mds-label2);
+  letter-spacing: var(--mds-label2-letter-spacing);
+  color: var(--mds-fg-neutral-bold);
+}
+
+.tooltipVariant {
+  list-style: none;
+  font: var(--mds-body2);
+  letter-spacing: var(--mds-body2-letter-spacing);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.close {
+  position: absolute;
+  top: var(--mds-space-20);
+  right: var(--mds-space-20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--mds-radius-8);
+  background: transparent;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--mds-bg-neutral-ghost-hover);
+}
+
+.controls {
+  position: absolute;
+  bottom: var(--mds-space-24);
+  left: 50%;
+  display: flex;
+  gap: var(--mds-space-8);
+  transform: translateX(-50%);
+}
+
+/* 도구 아이콘: 모양만 SVG에서 가져오고 색은 버튼 글자색(currentColor)을 따라간다.
+   그래서 선택돼서 배경이 밝아지면 아이콘은 어둡게 바뀐다. */
+.toolIcon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.toolMove {
+  mask-image: url("/mds-icons/tool-move.svg");
+}
+
+.toolHand {
+  mask-image: url("/mds-icons/tool-hand.svg");
+}

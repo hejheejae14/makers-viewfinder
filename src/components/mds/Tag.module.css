@@ -1,0 +1,31 @@
+/* MDS v2 Tag (Figma: ✅ Tag > size=small, shape=rect, variant=default, type=subtle) */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mds-space-4);
+  padding: var(--mds-space-4) var(--mds-space-8);
+  border-radius: var(--mds-radius-4);
+  white-space: nowrap;
+}
+
+.small {
+  font: var(--mds-label4);
+  letter-spacing: var(--mds-label4-letter-spacing);
+}
+
+.medium {
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+}
+
+.default {
+  background: var(--mds-bg-neutral-subtle);
+  color: var(--mds-fg-neutral-subtle);
+}
+
+.primary {
+  background: var(--mds-bg-brand-ghost);
+  color: var(--mds-fg-brand-default);
+}

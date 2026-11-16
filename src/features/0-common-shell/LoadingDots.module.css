@@ -1,0 +1,68 @@
+/* 점 세 개가 0.25초 간격으로 차례로 튀어 오른다.
+   한 사이클(1.7초) 안에서 튀어 오른 뒤 약 0.4초 쉬었다가 다음 사이클을 시작한다. */
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: hop 1.7s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+@keyframes hop {
+  0% {
+    transform: translateY(0);
+  }
+  15% {
+    transform: translateY(-3px);
+  }
+  30% {
+    transform: translateY(0);
+  }
+  38% {
+    transform: translateY(1px);
+  }
+  46%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dots span {
+    animation: none;
+  }
+}
+
+/* reserve: 안 보이는 글자로 폭을 잡고, 점은 그 가운데에 겹쳐 놓는다 */
+.reserve {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reserved {
+  visibility: hidden;
+}
+
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

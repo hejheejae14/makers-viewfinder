@@ -1,0 +1,94 @@
+/* 검색 결과 목록과 상세를 놓는 배치. 넓은 화면은 좌우로 나란히, 좁은 화면은 목록 → 상세로 한 화면씩 보여 준다. */
+
+.content {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--mds-space-20);
+}
+
+/* 목록과 상세는 따로 스크롤되지 않고, 페이지와 함께 스크롤된다 */
+.list {
+  display: grid;
+  align-content: start;
+  gap: var(--mds-space-2);
+  list-style: none;
+}
+
+/* MDS v2 List 항목 모양: 한 줄, 안쪽 여백 10, 모서리 8. 선택·마우스 올림은 Select 메뉴와 같은 색 */
+.entry {
+  min-width: 0;
+}
+
+.item {
+  display: grid;
+  gap: var(--mds-space-2);
+  width: 100%;
+  padding: var(--mds-space-10);
+  border: none;
+  border-radius: var(--mds-radius-8);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--mds-bg-neutral-ghost-hover);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--mds-stroke-neutral-inverse);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mds-space-6);
+  /* 선택하면 나오는 체크 아이콘(20px) 높이로 항상 맞춰서, 선택할 때 아래 줄이 밀리지 않게 한다 */
+  min-height: 20px;
+}
+
+.check {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.name {
+  min-width: 0;
+  color: var(--mds-fg-neutral-bold);
+  font: var(--mds-label3);
+  letter-spacing: var(--mds-label3-letter-spacing);
+  overflow-wrap: anywhere;
+}
+
+.section {
+  color: var(--mds-fg-neutral-subtle);
+  font: var(--mds-body3);
+  letter-spacing: var(--mds-body3-letter-spacing);
+}
+
+.detailArea {
+  display: grid;
+  align-content: start;
+  gap: var(--mds-space-12);
+  min-width: 0;
+}
+
+/* 좁은 화면: 누른 항목 아래에 상세를 펼친다 */
+.inline {
+  padding: var(--mds-space-8) var(--mds-space-10) var(--mds-space-20);
+}
+
+@media (max-width: 960px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 펼친 항목의 제목 줄을 상세를 스크롤하는 동안 헤더(64px)와 검색창 아래에 붙여 둔다 */
+  .item[aria-expanded="true"] {
+    position: sticky;
+    top: calc(64px + var(--search-bar-height, 0px));
+    z-index: 1;
+    background: var(--mds-bg-layer-layer-basement);
+  }
+}
