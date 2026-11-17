@@ -92,3 +92,15 @@
     background: var(--mds-bg-layer-layer-basement);
   }
 }
+
+/* 판정 칩: 제목 위에 놓고 왼쪽에 붙인다 */
+.verdict {
+  display: flex;
+  justify-self: start;
+  margin-bottom: var(--mds-space-4);
+}
+
+/* 마우스를 올리면 항목 배경이 칩 배경과 같은 회색이 돼서 칩이 묻힌다. 그때만 칩 배경을 한 단계 진하게 한다. */
+.item:hover .verdict > span {
+  background: var(--mds-bg-neutral-subtle-hover);
+}

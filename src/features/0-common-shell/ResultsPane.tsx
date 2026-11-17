@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type ReactNode } from "react";
+import { Tag } from "@/components/mds";
 import type { SearchResult } from "@/lib/types";
 import styles from "./ResultsPane.module.css";
 
@@ -62,6 +63,9 @@ export function ResultsPane({
                   expanded ? onClose() : onSelect(result.screen.id)
                 }
               >
+                <span className={styles.verdict}>
+                  <Tag size="small">{result.verdict}</Tag>
+                </span>
                 <span className={styles.row}>
                   <span className={styles.name}>{result.screen.name}</span>
                   {selected && (
