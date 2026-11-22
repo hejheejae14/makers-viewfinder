@@ -3,6 +3,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Tag } from "@/components/mds";
 import type { SearchResult } from "@/lib/types";
+import { screenIdentity } from "@/lib/screen-identity";
 import styles from "./ResultsPane.module.css";
 
 // 검색 결과 목록과 상세를 함께 놓는다.
@@ -50,17 +51,17 @@ export function ResultsPane({
     <div className={styles.content}>
       <ul className={styles.list} aria-label="검색 결과">
         {results.map((result) => {
-          const selected = result.screen.id === selectedId;
+          const selected = screenIdentity(result.screen) === selectedId;
           const expanded = narrow && selected && detailOpen;
           return (
-            <li key={result.screen.id} className={styles.entry}>
+            <li key={screenIdentity(result.screen)} className={styles.entry}>
               <button
                 type="button"
                 className={styles.item}
                 aria-current={selected}
                 aria-expanded={narrow ? expanded : undefined}
                 onClick={() =>
-                  expanded ? onClose() : onSelect(result.screen.id)
+                  expanded ? onClose() : onSelect(screenIdentity(result.screen))
                 }
               >
                 <span className={styles.verdict}>
@@ -84,6 +85,7 @@ export function ResultsPane({
                     {result.screen.section}
                   </span>
                 )}
+                {result.screen.fileName && <span className={styles.section}>{result.screen.fileName}</span>}
               </button>
               {expanded && <div className={styles.inline}>{detail}</div>}
             </li>

@@ -167,6 +167,11 @@ export function ResultDetail({
         <dl className={styles.facts}>
           <dt>팀</dt>
           <dd>{screen.teamPage}</dd>
+          {screen.fileName && <><dt>원본 파일</dt><dd>{screen.fileName}</dd></>}
+          {screen.pageName && <><dt>페이지</dt><dd>{screen.pageName}</dd></>}
+          {!!screen.cohortLabels?.length && <><dt>이름에 적힌 기수</dt><dd>{screen.cohortLabels.join(", ")} (화면 제작·완료 기수는 확인되지 않음)</dd></>}
+          {screen.designStatus && <><dt>작업 상태</dt><dd>확정·완료 여부 미확인</dd></>}
+          {screen.originalTeam && screen.originalTeam !== screen.teamPage && <><dt>기존 출처 팀</dt><dd>{screen.originalTeam}</dd></>}
           <dt>구역</dt>
           <dd>{screen.section ?? "-"}</dd>
           <dt>찾은 근거</dt>

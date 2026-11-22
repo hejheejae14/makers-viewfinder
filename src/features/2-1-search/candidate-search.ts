@@ -1,51 +1,25 @@
 import type { IndexedScreen } from "../../lib/types";
+import type { SearchCondition } from "./search-model";
+import { conditionMatches, getEvidence, includesTerm, normalize } from "./evidence";
+export type { SearchCondition } from "./search-model";
 
-/** AI가 최종 판정하기 전에, 검색 인덱스에서 넓게 뽑아 둔 후보입니다. */
+export interface CandidateEvidence {
+  condition: string;
+  source: "구역" | "화면 이름" | "화면 속 텍스트" | "컴포넌트" | "variant" | "토큰" | "출처" | "기수 표기";
+  value: string;
+}
 export interface SearchCandidate {
   screen: IndexedScreen;
+  /** 기존 3-2 호출자 호환용 점수. 확률/정확도가 아니다. */
   score: number;
   matchedConditions: string[];
   unmatchedConditions: string[];
   evidence: CandidateEvidence[];
+  requiredMatches: number;
+  directMatches: number;
+  hintMatches: number;
 }
-
-export interface CandidateEvidence {
-  condition: string;
-  source: "구역" | "화면 이름" | "화면 속 텍스트" | "컴포넌트" | "variant" | "토큰";
-  value: string;
-}
-
-export interface SearchCondition {
-  label: string;
-  aliases: string[];
-}
-
-interface SearchValue {
-  source: CandidateEvidence["source"];
-  value: string;
-  normalized: string;
-  weight: number;
-}
-
-const STOP_WORDS = new Set([
-  "관련",
-  "기능",
-  "디자인",
-  "보여줘",
-  "보여주세요",
-  "사용한",
-  "사용하는",
-  "스크린",
-  "있는",
-  "찾기",
-  "찾아",
-  "찾아줘",
-  "찾아주세요",
-  "페이지",
-  "화면",
-]);
-
-/** 자주 쓰는 말과 인덱스에 들어 있는 표현이 다른 경우만 한곳에서 연결합니다. */
+const STOP_WORDS = new Set(["관련", "기능", "디자인", "보여줘", "보여주세요", "사용한", "사용하는", "스크린", "있는", "찾기", "찾아", "찾아줘", "찾아주세요", "페이지", "화면"]);
 const CONCEPTS: SearchCondition[] = [
   { label: "빈 상태", aliases: ["빈 상태", "빈상태", "비어 있는", "비어있는", "엠티", "엠티뷰", "empty", "결과 없음", "결과없음"] },
   { label: "멘션", aliases: ["멘션", "언급", "mention", "태그"] },
@@ -54,167 +28,87 @@ const CONCEPTS: SearchCondition[] = [
   { label: "오류", aliases: ["오류", "에러", "error"] },
   { label: "버튼", aliases: ["버튼", "button"] },
 ];
+const WEIGHTS: Record<CandidateEvidence["source"], number> = { 구역: 1, "화면 이름": 1, "화면 속 텍스트": 5, 컴포넌트: 4, variant: 3, 토큰: 2, 출처: 1, "기수 표기": 1 };
+export interface FindCandidateOptions { limit?: number }
 
-const SOURCE_WEIGHT: Record<CandidateEvidence["source"], number> = {
-  구역: 6,
-  "화면 이름": 6,
-  "화면 속 텍스트": 5,
-  컴포넌트: 4,
-  variant: 3,
-  토큰: 2,
-};
-
-export interface FindCandidateOptions {
-  limit?: number;
+/** 기존 3-2 비교와 테스트용. 제품 검색은 AI 해석을 사용한다. */
+export function toSearchConditions(query: string): SearchCondition[] {
+  const normalized = normalize(query);
+  const found = CONCEPTS.filter((concept) => concept.aliases.some((alias) => includesTerm(normalized, alias)));
+  const tokens = normalized.split(" ").filter((token) => token.length >= 2 && !STOP_WORDS.has(token)
+    && !found.some((concept) => concept.aliases.some((alias) => includesTerm(alias, token))));
+  return [...found, ...tokens.map((token) => ({ label: token, aliases: [token] }))];
 }
-
-/**
- * 화면 이름만으로 후보를 버리지 않고, 인덱스가 가진 모든 검색 가능 정보를 함께 확인합니다.
- * 이 단계는 후보를 넓게 줄이는 역할만 하며, 정답/부분 일치의 최종 판정은 AI가 담당합니다.
- */
-export function findCandidates(
-  query: string,
-  screens: IndexedScreen[],
-  options: FindCandidateOptions = {},
-): SearchCandidate[] {
+export function findCandidates(query: string, screens: IndexedScreen[], options: FindCandidateOptions = {}) {
   return findCandidatesByConditions(screens, toSearchConditions(query), options);
 }
 
-/** AI가 해석한 조건으로 후보를 찾을 때 사용합니다. */
-export function findCandidatesByConditions(
-  screens: IndexedScreen[],
-  conditions: SearchCondition[],
-  options: FindCandidateOptions = {},
-): SearchCandidate[] {
-  const preparedConditions = prepareConditions(conditions);
-  if (preparedConditions.length === 0) return [];
-
-  const candidates = screens
-    .map((screen) => matchScreen(screen, preparedConditions))
-    .filter((candidate): candidate is SearchCandidate => candidate !== undefined)
-    .sort(compareCandidates);
-
-  return candidates.slice(0, options.limit ?? 20);
+/** 페이지·파일명으로 조기 제외하지 않는다. 후보 단계의 미확인은 불충족이 아니다. */
+export function findCandidatesByConditions(screens: IndexedScreen[], conditions: SearchCondition[], options: FindCandidateOptions = {}): SearchCandidate[] {
+  const positive = conditions.filter((condition) => condition.requirement !== "exclude" && condition.aliases.some((alias) => alias.trim()));
+  if (!positive.length) return [];
+  return screens.map((screen) => matchScreen(screen, positive))
+    .filter((candidate) => candidate.matchedConditions.length > 0)
+    .sort(compareCandidates).slice(0, options.limit ?? 20);
 }
-
-export function toSearchConditions(query: string): SearchCondition[] {
-  const normalizedQuery = normalize(query);
-  if (!normalizedQuery) return [];
-
-  const found: SearchCondition[] = [];
-  const coveredAliases = new Set<string>();
-
-  for (const concept of CONCEPTS) {
-    const aliases = concept.aliases.map(normalize);
-    if (aliases.some((alias) => includesTerm(normalizedQuery, alias))) {
-      found.push({ label: concept.label, aliases });
-      for (const alias of aliases) coveredAliases.add(alias);
-    }
-  }
-
-  for (const token of normalizedQuery.split(" ")) {
-    if (token.length < 2 || STOP_WORDS.has(token)) continue;
-    if ([...coveredAliases].some((alias) => includesTerm(alias, token))) continue;
-    found.push({ label: token, aliases: [token] });
-  }
-
-  return dedupeConditions(found);
-}
-
-function matchScreen(screen: IndexedScreen, conditions: SearchCondition[]): SearchCandidate | undefined {
-  const values = searchableValues(screen);
+export function matchScreen(screen: IndexedScreen, conditions: SearchCondition[]): SearchCandidate {
+  const atoms = getEvidence(screen);
   const evidence: CandidateEvidence[] = [];
   const matchedConditions: string[] = [];
   const unmatchedConditions: string[] = [];
-  let rawScore = 0;
-
-  for (const condition of conditions) {
-    const matches = values
-      .filter((candidate) => condition.aliases.some((alias) => includesTerm(candidate.normalized, alias)))
-      .sort((a, b) => b.weight - a.weight);
-
-    const best = matches[0];
-    if (!best) {
-      unmatchedConditions.push(condition.label);
-      continue;
-    }
-
+  let directMatches = 0, requiredMatches = 0, hintMatches = 0, rawScore = 0;
+  for (const condition of conditions.filter((condition) => condition.requirement !== "exclude")) {
+    const matches = atoms.filter((atom) => atom.source !== "팀" && conditionMatches(atom, condition))
+      .sort((a, b) => Number(b.strength === "direct") - Number(a.strength === "direct"));
+    const related = condition.relatedTo ? conditions.find((other) => other.id === condition.relatedTo) : undefined;
+    const best = matches.find((atom) => !related || (atom.owner && atoms.some((other) => other.owner === atom.owner && conditionMatches(other, related))))
+      ?? matches.find((atom) => atom.strength === "hint");
+    if (!best) { unmatchedConditions.push(condition.label); continue; }
     matchedConditions.push(condition.label);
-    rawScore += best.weight;
-    evidence.push({ condition: condition.label, source: best.source, value: best.value });
+    if (best.strength === "direct") {
+      directMatches++;
+      if ((condition.requirement ?? "must") === "must") requiredMatches++;
+    } else hintMatches++;
+    const source = best.source as CandidateEvidence["source"];
+    rawScore += WEIGHTS[source];
+    evidence.push({ condition: condition.label, source, value: best.value });
   }
-
-  if (matchedConditions.length === 0) return undefined;
-
-  const coverage = matchedConditions.length / conditions.length;
-  return {
-    screen,
-    score: Math.round(coverage * 1000 + rawScore),
-    matchedConditions,
-    unmatchedConditions,
-    evidence,
-  };
+  return { screen, score: requiredMatches * 1000 + directMatches * 100 + rawScore, matchedConditions, unmatchedConditions, evidence, requiredMatches, directMatches, hintMatches };
 }
-
-function searchableValues(screen: IndexedScreen): SearchValue[] {
-  const values: Omit<SearchValue, "normalized" | "weight">[] = [];
-  const add = (source: SearchValue["source"], value: string | undefined) => {
-    if (value?.trim()) values.push({ source, value });
-  };
-
-  add("구역", screen.section);
-  add("화면 이름", screen.name);
-  for (const text of screen.texts) add("화면 속 텍스트", text);
-  for (const component of screen.components) {
-    add("컴포넌트", component.name);
-    add("variant", component.variant);
-    add("컴포넌트", component.library);
-    if (component.isMds) add("컴포넌트", `MDS ${component.mdsVersion ?? ""}`);
-  }
-  for (const token of screen.tokens) add("토큰", token);
-
-  return values.map((value) => ({
-    ...value,
-    normalized: normalize(value.value),
-    weight: SOURCE_WEIGHT[value.source],
-  }));
-}
-
 function compareCandidates(a: SearchCandidate, b: SearchCandidate) {
-  return b.score - a.score || a.unmatchedConditions.length - b.unmatchedConditions.length || a.screen.name.localeCompare(b.screen.name, "ko");
+  return b.requiredMatches - a.requiredMatches || b.directMatches - a.directMatches
+    || a.unmatchedConditions.length - b.unmatchedConditions.length || b.hintMatches - a.hintMatches
+    || b.score - a.score || a.screen.name.localeCompare(b.screen.name, "ko");
 }
 
-function dedupeConditions(conditions: SearchCondition[]) {
-  const seen = new Set<string>();
-  return conditions.filter((condition) => {
-    if (seen.has(condition.label)) return false;
-    seen.add(condition.label);
-    return true;
-  });
+/** 이름이 일치하지 않는 후보도 파일·구역별 탐색 슬롯에 남긴다. 최종 결과의 개수 보정이 아니다. */
+export function retrieveCandidates(screens: IndexedScreen[], conditions: SearchCondition[], limit = 20): SearchCandidate[] {
+  const lexical = findCandidatesByConditions(screens, conditions, { limit: screens.length });
+  if (lexical.length <= limit && screens.length <= limit) {
+    const keys = new Set(lexical.map((candidate) => key(candidate.screen)));
+    return [...lexical, ...screens.filter((screen) => !keys.has(key(screen))).map((screen) => matchScreen(screen, conditions))];
+  }
+  const result = lexical.slice(0, Math.max(1, limit - Math.max(5, Math.floor(limit / 3))));
+  const keys = new Set(result.map((candidate) => key(candidate.screen)));
+  const covered = new Set(result.map((candidate) => `${candidate.screen.fileKey}/${candidate.screen.pageId ?? candidate.screen.section ?? ""}`));
+  // 입력 순서 대신 각 파일·페이지의 가장 관련 있는 화면을 탐색 슬롯에 둔다.
+  const lexicalKeys = new Set(lexical.map((c) => key(c.screen)));
+  const all = [...lexical, ...screens.filter((s) => !lexicalKeys.has(key(s))).map((s) => matchScreen(s, conditions))];
+  for (const { screen } of all) {
+    if (result.length >= limit) break;
+    const bucket = `${screen.fileKey}/${screen.pageId ?? screen.section ?? ""}`;
+    if (keys.has(key(screen)) || covered.has(bucket)) continue;
+    result.push(matchScreen(screen, conditions)); keys.add(key(screen)); covered.add(bucket);
+  }
+  for (const candidate of lexical) {
+    if (result.length >= limit) break;
+    if (!keys.has(key(candidate.screen))) { result.push(candidate); keys.add(key(candidate.screen)); }
+  }
+  return result;
 }
+const key = (screen: IndexedScreen) => `${screen.fileKey}/${screen.id}`;
 
-function prepareConditions(conditions: SearchCondition[]) {
-  return dedupeConditions(
-    conditions
-      .map((condition) => ({
-        label: condition.label.trim(),
-        aliases: [...new Set(condition.aliases.map(normalize).filter(Boolean))],
-      }))
-      .filter((condition) => condition.label && condition.aliases.length > 0),
-  );
-}
-
-function includesTerm(text: string, term: string) {
-  if (!term) return false;
-  if (/^[a-z0-9]{1,2}$/.test(term)) return text.split(" ").includes(term);
-  return text.includes(term) || (term.length >= 3 && text.length >= 3 && term.includes(text));
-}
-
-function normalize(value: string) {
-  return value
-    .normalize("NFKC")
-    .toLocaleLowerCase("ko-KR")
-    .replace(/[_/\\|()[\]{}.,!?@'":;+*-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+/** 여러 파일에서도 Gemini 호출은 한 번의 최종 판정으로 유지. 상한은 비용 한도이지 정확도 보장이 아니다. */
+export function candidateBudget(screens: IndexedScreen[]) {
+  return Math.min(60, Math.max(20, new Set(screens.map((s) => s.fileKey)).size * 3));
 }

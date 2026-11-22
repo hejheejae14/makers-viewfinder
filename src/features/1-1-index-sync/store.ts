@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile, open, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { Redis } from "@upstash/redis";
@@ -13,6 +13,8 @@ export interface KvStore {
   get<T>(key: string): Promise<T | undefined>;
   set(key: string, value: unknown): Promise<void>;
   del(key: string): Promise<void>;
+  acquireLock(key: string, owner: string, ttlMs: number): Promise<boolean>;
+  releaseLock(key: string, owner: string): Promise<void>;
 }
 
 class RedisStore implements KvStore {
@@ -31,10 +33,17 @@ class RedisStore implements KvStore {
   async del(key: string) {
     await this.redis.del(key);
   }
+  async acquireLock(key: string, owner: string, ttlMs: number) {
+    return (await this.redis.set(key, owner, { nx: true, px: ttlMs })) === "OK";
+  }
+  async releaseLock(key: string, owner: string) {
+    await this.redis.eval("if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end", [key], [owner]);
+  }
 }
 
-class FileStore implements KvStore {
-  private dir = path.join(tmpdir(), "viewfinder-index");
+export class FileStore implements KvStore {
+  private dir: string;
+  constructor(dir = path.join(tmpdir(), "viewfinder-index")) { this.dir = dir; }
 
   private file(key: string) {
     // 한글 팀 이름이 같은 글자로 바뀌어 서로 덮어쓰지 않도록, 글자를 지우지 않고 인코딩한다.
@@ -49,7 +58,28 @@ class FileStore implements KvStore {
   }
   async set(key: string, value: unknown) {
     await mkdir(this.dir, { recursive: true });
-    await writeFile(this.file(key), JSON.stringify(value));
+    const temporary = `${this.file(key)}.${crypto.randomUUID()}.tmp`;
+    await writeFile(temporary, JSON.stringify(value));
+    await rename(temporary, this.file(key));
+  }
+  async acquireLock(key: string, owner: string, ttlMs: number) {
+    await mkdir(this.dir, { recursive: true });
+    const filename = this.file(key);
+    try {
+      const lock = await open(filename, "wx");
+      try { await lock.writeFile(JSON.stringify({ owner, expires: Date.now() + ttlMs })); }
+      finally { await lock.close(); }
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      // 로컬 개발용 잠금도 만료 후 재개 가능하다. 재획득은 다음 요청에서 한다.
+      const current = await this.get<{ expires: number }>(key);
+      if (current && current.expires < Date.now()) await this.del(key);
+      return false;
+    }
+  }
+  async releaseLock(key: string, owner: string) {
+    if ((await this.get<{ owner: string }>(key))?.owner === owner) await this.del(key);
   }
   async del(key: string) {
     await rm(this.file(key), { force: true });

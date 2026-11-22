@@ -5,9 +5,13 @@
 
 /** 검색 대상 팀 페이지 */
 export type TeamPage = "앱" | "플그" | "크루" | "공홈" | "어드민";
+/** 어드민은 과거 인덱스 읽기 호환용으로만 유지한다. */
+export type SearchTeam = Exclude<TeamPage, "어드민">;
 
 /** 화면에 쓰인 컴포넌트 */
 export interface ComponentUsage {
+  instanceId?: string;
+  path?: string[];
   name: string; // 예: "Button"
   variant?: string; // 예: "subtle"
   library?: string; // 소속 라이브러리 이름
@@ -37,6 +41,15 @@ export interface MdsElement {
 export interface IndexedScreen {
   id: string; // Figma 노드 ID
   fileKey: string; // Figma 파일 키
+  fileName?: string;
+  pageId?: string;
+  pageName?: string;
+  sourceId?: string;
+  originalTeam?: TeamPage;
+  /** 파일/페이지 이름에 실제 적힌 기수 표기. 화면 제작 기수나 완료 상태를 뜻하지 않는다. */
+  cohortLabels?: string[];
+  designStatus?: "unknown";
+  structure?: "screen" | "container-child";
   teamPage: TeamPage;
   section?: string; // 화면 위의 구역 제목 (예: "커뮤니티")
   name: string; // 프레임 이름
@@ -52,6 +65,8 @@ export interface IndexedScreen {
 
 /** 화면이 아니라고 보고 인덱스에서 뺀 프레임. 사람이 검토할 수 있게 이유와 함께 남긴다. */
 export interface ExcludedFrame {
+  fileKey?: string;
+  sourceId?: string;
   id: string; // Figma 노드 ID
   name: string; // 프레임 이름
   reason: string; // 화면이 아니라고 본 이유
@@ -62,10 +77,26 @@ export interface ExcludedFrame {
  * 저장소에 팀 페이지마다 이 모양의 값 하나로 들어 있다.
  */
 export interface TeamIndex {
+  files?: FileSyncStatus[];
   team: TeamPage;
   syncedAt: string; // 동기화를 시작한 시각 (ISO 문자열)
   screens: IndexedScreen[];
   excluded: ExcludedFrame[];
+}
+
+export interface FileSyncStatus {
+  sourceId: string;
+  fileKey: string;
+  fileName: string;
+  folderId?: string;
+  status: "pending" | "success" | "unchanged" | "failed" | "review";
+  errorCode?: "authentication" | "forbidden" | "not-found-or-inaccessible" | "rate-limit" | "request";
+  message?: string;
+  retainedPrevious?: boolean;
+  screens: number;
+  version?: string;
+  lastModified?: string;
+  syncedAt?: string;
 }
 
 /** Find My Design 판정 규칙 */

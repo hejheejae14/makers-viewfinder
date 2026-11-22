@@ -22,6 +22,7 @@ import { searchTeam } from "@/features/2-1-search/search";
 import { AiHandoff } from "@/features/3-1-ai-handoff/AiHandoff";
 import { MdsCompare } from "@/features/3-2-mds-v2-compare/MdsCompare";
 import { useSession } from "@/lib/session";
+import { SEARCH_TEAMS, canonicalTeam, screenIdentity } from "@/lib/screen-identity";
 import type {
   SearchResponse,
   SearchResult,
@@ -35,7 +36,7 @@ import styles from "./SearchView.module.css";
 // 2-1 검색 화면은 아직 합쳐진 디자인이 없어, MDS 부품만 쓴 임시 검색창과 결과 목록을 둔다. 2-1 화면이 합쳐지면 이 부분만 교체한다.
 // 팀 비밀번호와 개인 API 키는 1-2에서 이 브라우저에 저장한 값을 쓴다.
 
-const TEAMS: TeamPage[] = ["앱", "플그", "크루", "공홈", "어드민"];
+const TEAMS: TeamPage[] = SEARCH_TEAMS;
 const TEAM_OPTIONS = TEAMS.map((team) => ({ value: team, label: team }));
 
 type Phase =
@@ -67,7 +68,7 @@ export function SearchView({
   const router = useRouter();
   const session = useSession();
   const request = useRef<AbortController | null>(null);
-  const [team, setTeam] = useState<TeamPage>(previewResponse?.team ?? "앱");
+  const [team, setTeam] = useState<TeamPage>(canonicalTeam(previewResponse?.team ?? "앱"));
   const [query, setQuery] = useState(previewResponse?.query ?? "");
   const [phase, setPhase] = useState<Phase>(
     previewResponse
@@ -75,7 +76,7 @@ export function SearchView({
       : { status: "idle" },
   );
   const [selectedId, setSelectedId] = useState<string | null>(
-    previewResponse?.results[0]?.screen.id ?? null,
+    previewResponse?.results[0] ? screenIdentity(previewResponse.results[0].screen) : null,
   );
   const [comparing, setComparing] = useState(false);
   // 좁은 화면에서 목록 대신 상세를 보여 줄지
@@ -121,11 +122,14 @@ export function SearchView({
         ? (phase.previous?.results ?? [])
         : [];
   const selected: SearchResult | undefined = results.find(
-    (result) => result.screen.id === selectedId,
+    (result) => screenIdentity(result.screen) === selectedId,
   );
 
   // 선택한 결과의 화면 이미지를 팀 공용 토큰으로 받아 온다. (서버가 임시 주소만 돌려준다.)
-  const selectedScreenId = selected?.screen.id;
+  const selectedScreenId = selected ? screenIdentity(selected.screen) : undefined;
+  const selectedNodeId = selected?.screen.id;
+  const selectedFileKey = selected?.screen.fileKey;
+  const selectedTeam = selected ? canonicalTeam(selected.screen.teamPage) : undefined;
   const imageKnown = selectedScreenId
     ? Boolean(imageUrls[selectedScreenId] || imageErrors[selectedScreenId])
     : true;
@@ -138,7 +142,7 @@ export function SearchView({
         "Content-Type": "application/json",
         "x-team-password": password,
       },
-      body: JSON.stringify({ nodeId: selectedScreenId }),
+      body: JSON.stringify({ nodeId: selectedNodeId, fileKey: selectedFileKey, team: selectedTeam }),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -168,7 +172,7 @@ export function SearchView({
         }));
       });
     return () => controller.abort();
-  }, [password, selectedScreenId, imageKnown]);
+  }, [password, selectedScreenId, selectedNodeId, selectedFileKey, selectedTeam, imageKnown]);
 
   if (!session && !previewResponse) return null;
 
@@ -199,7 +203,7 @@ export function SearchView({
       });
       if (controller.signal.aborted) return;
       setPhase({ status: "ready", response });
-      setSelectedId(response.results[0]?.screen.id ?? null);
+      setSelectedId(response.results[0] ? screenIdentity(response.results[0].screen) : null);
     } catch (error) {
       if (controller.signal.aborted) return;
       setPhase({
@@ -336,6 +340,9 @@ export function SearchView({
             찾지 못함: 이 팀 인덱스에서 조건을 모두 만족하는 화면이 없어요.
           </Callout>
         )}
+        {phase.status === "ready" && results.length > 0 && !results.some((result) => result.verdict === "정답 후보") && (
+          <Callout>모든 필수조건을 확인한 정답 후보는 없어요. 아래는 일부 조건만 맞거나 근거가 부족한 관련 화면이에요.</Callout>
+        )}
 
         {results.length > 0 && (
           <ResultsPane
@@ -352,12 +359,12 @@ export function SearchView({
                 <div className={styles.detail}>
                   <ResultDetail
                     result={selected}
-                    thumbnailUrl={imageUrls[selected.screen.id]}
+                    thumbnailUrl={imageUrls[screenIdentity(selected.screen)]}
                     thumbnailLoading={
-                      !imageUrls[selected.screen.id] &&
-                      !imageErrors[selected.screen.id]
+                      !imageUrls[screenIdentity(selected.screen)] &&
+                      !imageErrors[screenIdentity(selected.screen)]
                     }
-                    thumbnailNote={imageErrors[selected.screen.id]}
+                    thumbnailNote={imageErrors[screenIdentity(selected.screen)]}
                   />
                   <div>
                     <Button onClick={() => setComparing(true)}>
