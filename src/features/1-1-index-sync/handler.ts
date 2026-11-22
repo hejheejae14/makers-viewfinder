@@ -1,9 +1,11 @@
 import type { TeamPage } from "../../lib/types";
 import { authorize, json } from "./auth";
-import { FigmaAccessError } from "./figma-library";
+import { FigmaAccessError, FigmaRateLimitError } from "./figma-library";
 import { FigmaTokenMissingError, getSharedFigmaToken } from "./figma-token";
 import { TEAM_PAGE_NODE_IDS } from "./config";
-import { getSyncProgress, getTeamIndex, planSync, runSyncStep, SyncBusyError, SyncNotStartedError } from "./sync";
+import { canonicalTeam } from "../../lib/screen-identity";
+import { getFileSources } from "./file-registry";
+import { getDraft, publishDraft, getSyncProgress, getTeamIndex, planSync, runSyncStep, SyncBusyError, SyncNotStartedError } from "./sync";
 
 /**
  * 웹에서 동기화를 실행하는 서버 쪽 처리입니다. (src/app/api/index-sync/route.ts가 이 함수를 부릅니다.)
@@ -21,7 +23,7 @@ import { getSyncProgress, getTeamIndex, planSync, runSyncStep, SyncBusyError, Sy
 const STEP_BUDGET_MS = 30_000;
 
 const TEAMS = Object.keys(TEAM_PAGE_NODE_IDS) as TeamPage[];
-const ACTIONS = ["status", "start", "continue"] as const;
+const ACTIONS = ["status", "start", "continue", "retry", "publish"] as const;
 type Action = (typeof ACTIONS)[number];
 
 export async function handleSyncRequest(request: Request): Promise<Response> {
@@ -34,11 +36,16 @@ export async function handleSyncRequest(request: Request): Promise<Response> {
   if (!action || !team) return json({ error: "action(status, start, continue)과 team(앱, 플그, 크루, 공홈, 어드민)이 필요합니다." }, 400);
 
   try {
-    const figmaToken = action === "status" ? "" : await getSharedFigmaToken();
-    return json(await run(action, team, figmaToken));
+    const figmaToken = action === "status" || action === "publish" ? "" : await getSharedFigmaToken();
+    return json(await run(action, canonicalTeam(team), figmaToken));
   } catch (error) {
     if (error instanceof FigmaTokenMissingError) return json({ error: error.message }, 503);
     if (error instanceof FigmaAccessError) return json({ error: error.message }, 403);
+    if (error instanceof FigmaRateLimitError) {
+      const response = json({ error: error.message }, 429);
+      response.headers.set("Retry-After", String(error.retryAfter));
+      return response;
+    }
     if (error instanceof SyncBusyError || error instanceof SyncNotStartedError) return json({ error: error.message }, 409);
     // 오류 메시지에는 Figma 토큰 같은 비밀 값이 들어가지 않는다. (figma-library.ts는 요청 경로만 알린다.)
     return json({ error: error instanceof Error ? error.message : "알 수 없는 오류가 났어요." }, 500);
@@ -47,11 +54,16 @@ export async function handleSyncRequest(request: Request): Promise<Response> {
 
 async function run(action: Action, team: TeamPage, figmaToken: string) {
   if (action === "start") return planSync(team, figmaToken);
+  if (action === "retry") return planSync(team, figmaToken, true);
+  if (action === "publish") return publishDraft(team);
   if (action === "continue") return runSyncStep(team, figmaToken, STEP_BUDGET_MS);
 
-  const [index, pending] = await Promise.all([getTeamIndex(team), getSyncProgress(team)]);
+  const [index, pending, draft] = await Promise.all([getTeamIndex(team), getSyncProgress(team), getDraft(team)]);
   return {
     team,
+    sources: getFileSources(team),
+    files: draft?.files ?? pending?.files ?? index?.files ?? [],
+    draft: draft ? { screens: draft.screens.length, syncedAt: draft.syncedAt, files: draft.files } : null,
     index: index
       ? {
           syncedAt: index.syncedAt,

@@ -9,6 +9,8 @@ import {
   TextField,
 } from "@/components/mds";
 import { useSession } from "@/lib/session";
+import { SEARCH_TEAMS } from "@/lib/screen-identity";
+import type { FileSyncStatus } from "@/lib/types";
 import styles from "./SyncPanel.module.css";
 
 // 1-1 인덱스 동기화 화면의 알맹이입니다. 검색 화면의 모달과 /sync 페이지가 함께 씁니다.
@@ -17,7 +19,7 @@ import styles from "./SyncPanel.module.css";
 // Figma 토큰은 팀 공용 읽기 전용 토큰 하나를 이 화면에서 등록합니다. 등록한 토큰은 서버(Redis)에 보관되며
 // 동기화와 화면 이미지가 함께 씁니다. 이 화면에는 값을 남기지 않고 서버도 값을 다시 돌려주지 않습니다. (팀 합의 필요)
 
-const TEAMS = ["앱", "플그", "크루", "공홈", "어드민"] as const;
+const TEAMS = SEARCH_TEAMS;
 type Team = (typeof TEAMS)[number];
 const TEAM_OPTIONS = TEAMS.map((name) => ({ value: name, label: name }));
 
@@ -28,6 +30,8 @@ interface Progress {
 }
 
 interface Status {
+  files?: FileSyncStatus[];
+  draft?: { screens: number; syncedAt: string; files: FileSyncStatus[] } | null;
   index: {
     syncedAt: string;
     screens: number;
@@ -83,7 +87,7 @@ export function SyncPanel({
   const [editingToken, setEditingToken] = useState(false);
 
   const call = useCallback(
-    async (action: "status" | "start" | "continue") => {
+    async (action: "status" | "start" | "continue" | "retry" | "publish") => {
       const response = await fetch("/api/index-sync", {
         method: "POST",
         headers: {
@@ -159,11 +163,11 @@ export function SyncPanel({
     setNotice(null);
   }
 
-  async function sync(restart: boolean) {
+  async function sync(restart: boolean, retryOnly = false) {
     setBusy(true);
     setNotice(null);
     try {
-      if (restart) setProgress((await call("start")) as Progress);
+      if (restart) setProgress((await call(retryOnly ? "retry" : "start")) as Progress);
       // 서버는 한 번에 시간 예산만큼만 읽으므로, 끝날 때까지 반복해서 부른다.
       for (;;) {
         const next = (await call("continue")) as Progress;
@@ -174,8 +178,16 @@ export function SyncPanel({
     } catch (error) {
       setNotice({ tone: "danger", text: errorText(error) });
     } finally {
+      setStatus((await call("status").catch(() => null)) as Status | null);
       setBusy(false);
     }
+  }
+
+  async function publish() {
+    setBusy(true);
+    try { await call("publish"); setStatus(await call("status") as Status); setNotice({ tone: "information", text: "검토한 인덱스를 검색에 반영했어요. 검색 화면을 새로고침해 주세요." }); }
+    catch (error) { setNotice({ tone: "danger", text: errorText(error) }); }
+    finally { setBusy(false); }
   }
 
   async function changeToken(action: "set" | "clear") {
@@ -261,6 +273,14 @@ export function SyncPanel({
 
         {/* 오류는 현황 박스 바로 아래, 버튼 위에 보여 준다. */}
         {notice && <Callout tone={notice.tone}>{notice.text}</Callout>}
+        {!!status?.files?.length && <details className={styles.details}>
+          <summary>파일별 동기화 상태 ({status.files.length}개 출처)</summary>
+          <ul>{status.files.map((file) => <li key={file.sourceId}>
+            {file.fileName} · {file.sourceId} · {file.status} · 화면 {file.screens}개
+            {file.retainedPrevious ? " · 이전 결과 유지" : ""}{file.message ? ` · ${file.message}` : ""}
+          </li>)}</ul>
+        </details>}
+        {status?.draft && <Callout>임시 인덱스: 화면 {status.draft.screens}개. 파일별 실패·검토 상태를 확인한 뒤 반영해 주세요. 반영 전에는 기존 검색 데이터가 유지됩니다.</Callout>}
 
         {/* 진행 중에는 버튼 대신 진행 상황과 안내를 한 덩어리로 보여 준다. */}
         {busy ? (
@@ -272,11 +292,11 @@ export function SyncPanel({
             <span className={styles.progressLine}>
               <span>동기화하는 중</span>
               <span>
-                {progress?.done ?? 0} / {progress?.total ?? "…"} 구역
+                {progress?.done ?? 0} / {progress?.total ?? "…"} 파일 출처
               </span>
             </span>
             <span className={styles.text}>
-              끝날 때까지 이 창을 열어 두세요. 구역이 많으면 몇 분 걸려요.
+              끝날 때까지 이 창을 열어 두세요. 여러 파일을 구역별로 읽어 임시 결과를 만듭니다.
             </span>
           </div>
         ) : (
@@ -291,11 +311,13 @@ export function SyncPanel({
               </Button>
             )}
             <Button
-              disabled={!password || noToken}
+              disabled={!password || noToken || Boolean(status?.pending)}
               onClick={() => void sync(true)}
             >
-              동기화
+              임시 인덱스 만들기
             </Button>
+            {!!status?.files?.some((f) => f.status === "failed" || f.status === "review") && !status?.pending && <Button variant="secondary" disabled={!password || noToken} onClick={() => void sync(true, true)}>실패·검토 파일 재시도</Button>}
+            {status?.draft && !status.pending && <Button variant="secondary" disabled={!password} onClick={() => void publish()}>검토한 임시 인덱스 반영</Button>}
           </div>
         )}
       </div>

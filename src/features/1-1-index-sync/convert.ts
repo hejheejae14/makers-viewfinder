@@ -9,7 +9,7 @@ import { judgeFrame, type FrameStats } from "./screen-rules";
  * - 구역(SECTION) 안의 구역은 끝까지 따라 들어갑니다.
  */
 
-interface FigmaNode {
+export interface FigmaNode {
   id: string;
   name: string;
   type: string;
@@ -40,6 +40,11 @@ export interface ConvertOptions {
   fileKey: string;
   teamPage: TeamPage;
   syncedAt: string;
+  fileName?: string;
+  sourceId?: string;
+  pageId?: string;
+  pageName?: string;
+  originalTeam?: TeamPage;
   /** MDS v1·v2 파일에 있는 컴포넌트·스타일 키 (loadMdsKeys). 여기에 없는 것은 MDS가 적용되지 않은 것으로 본다. */
   mdsKeys: MdsKeys;
 }
@@ -55,8 +60,9 @@ export interface ConvertResult {
 export function nodeToScreens(response: FigmaNodeResponse, options: ConvertOptions): ConvertResult {
   const result: ConvertResult = { screens: [], excluded: [], ignored: 0 };
   const root = response.document;
-  if (root.type === "SECTION") {
-    collect(root, [root.name], response, options, result);
+  if (root.visible === false) return result;
+  if (["SECTION", "CANVAS", "DOCUMENT", "GROUP"].includes(root.type)) {
+    collect(root, root.type === "SECTION" ? [root.name] : [], response, options, result);
   } else {
     // 구역에 들어 있지 않고 페이지에 바로 놓인 프레임
     collect({ ...root, id: "", name: "", type: "CANVAS", children: [root] }, [], response, options, result);
@@ -74,21 +80,47 @@ function collect(
   for (const child of container.children ?? []) {
     if (child.visible === false) continue;
 
-    if (child.type === "SECTION") {
+    if (child.type === "SECTION" || child.type === "GROUP") {
       collect(child, [...sectionPath, child.name], response, options, result);
     } else if (child.type === "FRAME") {
       const analyzed = analyzeFrame(child, response, options);
       const box = child.absoluteBoundingBox ?? { width: 0, height: 0 };
       const verdict = judgeFrame({ type: child.type, ...box }, analyzed.stats);
-      if (verdict.isScreen) {
+      if (independentChildren(child)) {
+        result.excluded.push({ id: child.id, fileKey: options.fileKey, sourceId: options.sourceId, name: child.name, reason: "여러 독립 화면 또는 단일 화면을 감싼 작업 컨테이너" });
+        const before = result.screens.length;
+        collect(child, [...sectionPath, child.name], response, options, result);
+        result.screens.slice(before).forEach((s) => { s.structure = "container-child"; });
+      } else if (verdict.isScreen) {
         result.screens.push(toScreen(child, sectionPath, analyzed, response, options));
       } else {
-        result.excluded.push({ id: child.id, name: child.name, reason: verdict.reason });
+        result.excluded.push({ id: child.id, fileKey: options.fileKey, sourceId: options.sourceId, name: child.name, reason: verdict.reason });
+        // 화면으로 판정되지 않은 작업 컨테이너 안쪽도 탐색한다.
+        collect(child, [...sectionPath, child.name], response, options, result);
       }
     } else {
       result.ignored += 1;
     }
   }
+}
+
+/** 분리된 화면 크기의 형제 프레임 또는 거의 같은 크기의 단일 래퍼를 펼친다. */
+function independentChildren(frame: FigmaNode): boolean {
+  const flatten = (nodes: FigmaNode[]): FigmaNode[] => nodes.filter((n) => n.visible !== false)
+    .flatMap((n) => n.type === "GROUP" || n.type === "SECTION" ? flatten(n.children ?? []) : [n]);
+  const children = flatten(frame.children ?? []);
+  const candidates = children.filter((n) => n.type === "FRAME" && (n.absoluteBoundingBox?.width ?? 0) >= 300 && (n.absoluteBoundingBox?.height ?? 0) >= 400);
+  const area = (n: FigmaNode) => (n.absoluteBoundingBox?.width ?? 0) * (n.absoluteBoundingBox?.height ?? 0);
+  if (children.length === 1 && candidates.length === 1 && area(candidates[0]) >= area(frame) * 0.8) return true;
+  if (candidates.length < 2) return false;
+  return candidates.some((a, i) => candidates.slice(i + 1).some((b) => {
+    const aa = a.absoluteBoundingBox as { x?: number; y?: number; width: number; height: number };
+    const bb = b.absoluteBoundingBox as typeof aa;
+    if (aa.x === undefined || aa.y === undefined || bb.x === undefined || bb.y === undefined) return false;
+    const comparable = Math.min(area(a), area(b)) / Math.max(area(a), area(b)) >= 0.5;
+    const gap = Math.max(bb.x - aa.x - aa.width, aa.x - bb.x - bb.width, bb.y - aa.y - aa.height, aa.y - bb.y - bb.height);
+    return comparable && gap >= 24 && area(a) < area(frame) * 0.8 && area(b) < area(frame) * 0.8;
+  }));
 }
 
 /** 요소가 화면 프레임 영역과 조금이라도 겹치는지. 위치를 모르면 겹치는 것으로 본다. */
@@ -123,7 +155,7 @@ function analyzeFrame(frame: FigmaNode, response: FigmaNodeResponse, options: Co
     } else if (node.type === "INSTANCE") {
       stats.instances += 1;
       const usage = toComponentUsage(node, response, options);
-      if (usage) components.set(`${usage.name}|${usage.variant ?? ""}|${usage.library ?? ""}`, usage);
+      if (usage) components.set(node.id, usage);
     } else if (node.type !== "FRAME" && node.type !== "GROUP") {
       stats.shapes += 1;
     }
@@ -155,6 +187,7 @@ function toComponentUsage(
   const mdsVersion = options.mdsKeys.components.get(info.key);
   return {
     name: setName ?? info.name,
+    instanceId: node.id,
     variant: setName ? info.name : undefined,
     library: mdsVersion ? mdsLibraryName(mdsVersion) : undefined,
     isMds: mdsVersion !== undefined,
@@ -240,6 +273,14 @@ function toScreen(
   return {
     id: frame.id,
     fileKey,
+    fileName: options.fileName,
+    sourceId: options.sourceId,
+    originalTeam: options.originalTeam,
+    pageId: options.pageId,
+    pageName: options.pageName,
+    cohortLabels: [...new Set(`${options.fileName ?? ""} ${options.pageName ?? ""}`.match(/\d+\s*기/g) ?? [])],
+    designStatus: "unknown",
+    structure: "screen",
     teamPage,
     section: sectionPath.length > 0 ? sectionPath.join(" > ") : undefined,
     name: frame.name,
