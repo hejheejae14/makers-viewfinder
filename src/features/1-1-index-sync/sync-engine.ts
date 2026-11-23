@@ -6,6 +6,7 @@ import { PD_FILE_KEY, TEAM_PAGE_NODE_IDS } from "./config";
 import { mergeLegacyIndexes } from "./index-merge";
 import type { MdsKeys, MdsVersion } from "./mds";
 import type { KvStore } from "./store";
+import { backupIndex, withIndexLock } from "./index-write";
 
 interface Item { id: string; pageId: string; pageName: string }
 interface Snapshot { screens: IndexedScreen[]; excluded: ExcludedFrame[]; version?: string; lastModified?: string }
@@ -39,10 +40,7 @@ export function createSyncEngine(deps: {
   const progress = (job: Job, team: TeamPage, finished = false): SyncProgress => ({ team: canonicalTeam(team), done: job.next,
     total: job.files.length, finished, draftReady: finished, files: job.files.map((f) => f.status) });
   async function locked<T>(team: TeamPage, work: () => Promise<T>) {
-    const owner = crypto.randomUUID();
-    const lock = `viewfinder:multi-lock:${canonicalTeam(team)}`;
-    if (!await store.acquireLock(lock, owner, 180_000)) throw new SyncBusyError();
-    try { return await work(); } finally { await store.releaseLock(lock, owner); }
+    return withIndexLock(store, team, work, () => new SyncBusyError());
   }
   async function getTeamIndex(team: TeamPage) {
     const scope = canonicalTeam(team);
@@ -190,8 +188,7 @@ export function createSyncEngine(deps: {
       if (!draft) throw new Error("검토할 임시 인덱스가 없어요.");
       // 기존 어드민 키는 남겨 둔다. 읽기 호환에서도 계속 보존된다.
       const previous = await getTeamIndex(team);
-      const backupKey = `viewfinder:multi-backup:${canonicalTeam(team)}:${draft.syncedAt}`;
-      if (!await store.get(backupKey)) await store.set(backupKey, { index: previous ?? null });
+      await backupIndex(store, team, draft.syncedAt, previous);
       await store.set(indexKey(canonicalTeam(team)), draft);
       await store.del(draftKey(team));
       return { published: true, screens: draft.screens.length, files: draft.files };
