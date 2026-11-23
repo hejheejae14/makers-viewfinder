@@ -15,6 +15,8 @@ export interface SearchCondition {
   scope?: "screen" | "region" | "element";
   /** 이 조건과 같은 컴포넌트 사용 정보/요소에서 검증해야 하는 조건 ID */
   relatedTo?: string;
+  /** AI의 원문 인용을 확인하지 못한 조건. 결과를 정답으로 확정하는 데 사용하지 않는다. */
+  sourceVerified?: boolean;
 }
 
 export interface QueryUnderstanding {
@@ -46,6 +48,8 @@ export interface AiJudgement {
   unmetConditions?: string[];
   relevance?: "high" | "medium" | "low" | "irrelevant";
   checks?: ConditionCheck[];
+  /** 알려진 부정 판정/가까운 후보는 검증 후에도 부분 일치 추천으로만 표시한다. */
+  recommendationOnly?: boolean;
 }
 
 export interface AiCandidate {

@@ -47,6 +47,7 @@ export async function runSearch({ query, team, index, ai, signal, onTrace }: {
   const judgements = await ai.judge({ query: trimmed, team, candidates: toAiCandidates(candidates), conditions: interpretation.conditions, signal });
   trace.judgements = judgements;
   const verified = verifyJudgements(candidates, judgements, interpretation.conditions, team);
+  for (const item of verified) if (interpretation.warnings?.length) item.result.reasons.unshift(...interpretation.warnings.map(warning => `검색 해석 안내: ${warning}`));
   trace.verification = verified; trace.stage = "complete"; publish();
   return { query: trimmed, team, results: verified.map((item) => item.result) };
 }

@@ -4,22 +4,23 @@ import { GeminiSearchError, type GeminiStage } from "./gemini-error";
 import { parseGeminiJson } from "./gemini-validation";
 import { readSafeGeminiHttpError } from "./gemini-http-error";
 import { GEMINI_MODELS_API, GEMINI_GENERATION_DEFAULTS, GEMINI_STORE } from "./gemini-config";
+import { requestWith503Retry, type RetryEvents } from "./gemini-retry";
 
 const FINISH_REASONS = new Set(["STOP", "MAX_TOKENS", "SAFETY", "RECITATION", "LANGUAGE", "OTHER", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "MALFORMED_FUNCTION_CALL", "IMAGE_SAFETY", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE", "FINISH_REASON_UNSPECIFIED"]);
 
 /** 브라우저 어댑터의 통신 처리. 테스트는 fetch를 바꿔 외부 연결 없이 실행한다. */
-export async function requestGeminiJson({ apiKey, model, stage, systemInstruction, input, signal }: {
+export async function requestGeminiJson({ apiKey, model, stage, systemInstruction, input, signal, onRequest, onRetry }: {
   apiKey: string; model: string; stage: GeminiStage; systemInstruction: string; input: string; signal?: AbortSignal;
-}, fetcher: typeof fetch = fetch): Promise<{ value: unknown; httpStatus: number; finishReason: string | null }> {
+} & RetryEvents, fetcher: typeof fetch = fetch): Promise<{ value: unknown; httpStatus: number; finishReason: string | null }> {
   let response: Response;
   try {
-    response = await fetcher(`${GEMINI_MODELS_API}/${encodeURIComponent(model)}:generateContent`, {
+    response = await requestWith503Retry(() => fetcher(`${GEMINI_MODELS_API}/${encodeURIComponent(model)}:generateContent`, {
       method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({ systemInstruction: { parts: [{ text: systemInstruction }] },
         contents: [{ role: "user", parts: [{ text: input }] }],
         generationConfig: { responseMimeType: "application/json", ...GEMINI_GENERATION_DEFAULTS }, store: GEMINI_STORE,
       }), cache: "no-store", signal,
-    });
+    }), { signal, onRequest, onRetry });
   } catch (error) {
     if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
     throw new GeminiSearchError("network", stage, "Gemini에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.");

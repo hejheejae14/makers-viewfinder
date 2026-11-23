@@ -70,6 +70,8 @@ export function SearchView({
   const request = useRef<AbortController | null>(null);
   const [team, setTeam] = useState<TeamPage>(canonicalTeam(previewResponse?.team ?? "앱"));
   const [query, setQuery] = useState(previewResponse?.query ?? "");
+  const [searchWarnings, setSearchWarnings] = useState<string[]>([]);
+  const [retryNotice, setRetryNotice] = useState("");
   const [phase, setPhase] = useState<Phase>(
     previewResponse
       ? { status: "ready", response: previewResponse }
@@ -179,6 +181,7 @@ export function SearchView({
   async function search(event: FormEvent) {
     event.preventDefault();
     if (!session) return;
+    setSearchWarnings([]); setRetryNotice("");
     const controller = new AbortController();
     request.current?.abort();
     request.current = controller;
@@ -193,13 +196,14 @@ export function SearchView({
             : undefined,
     }));
     try {
-      const ai = createGeminiSearchAi(session.apiKey);
+      const ai = createGeminiSearchAi(session.apiKey, { onRetry: () => setRetryNotice("Gemini 서버가 일시적으로 혼잡해 잠시 기다린 뒤 한 번 재시도합니다.") });
       const response = await searchTeam({
         query,
         team,
         teamPassword: session.password,
         ai,
         signal: controller.signal,
+        onTrace: trace => { if (!controller.signal.aborted) setSearchWarnings(trace.interpretation?.warnings ?? []); },
       });
       if (controller.signal.aborted) return;
       setPhase({ status: "ready", response });
@@ -325,6 +329,9 @@ export function SearchView({
             )}
           </Button>
         </form>
+        <p>검색은 기본 2회, 503 일시 오류 시 단계별 1회 재시도로 최대 4회 Gemini 요청을 사용합니다. 재시도에 추가 사용량이 발생할 수 있어요.</p>
+        {retryNotice && <Callout>{retryNotice}</Callout>}
+        {!!searchWarnings.length && <Callout>{searchWarnings.join(" ")}</Callout>}
 
         {phase.status === "idle" && (
           <Callout>팀을 고르고 찾고 싶은 화면이나 기능을 적어 주세요.</Callout>
