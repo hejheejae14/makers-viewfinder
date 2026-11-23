@@ -11,7 +11,7 @@ import { backupIndex, withIndexLock } from "./index-write";
 interface Item { id: string; pageId: string; pageName: string }
 interface Snapshot { screens: IndexedScreen[]; excluded: ExcludedFrame[]; version?: string; lastModified?: string }
 interface WorkFile { source: FileSource; status: FileSyncStatus; items?: Item[]; next: number }
-interface Job { id: string; startedAt: string; files: WorkFile[]; next: number; retryAt?: number; mds: { components: [string, MdsVersion][]; styles: string[] } }
+export interface Job { id: string; startedAt: string; files: WorkFile[]; next: number; retryAt?: number; mds: { components: [string, MdsVersion][]; styles: string[] } }
 interface RootResponse { name: string; version?: string; lastModified?: string; document: { children?: { id: string; name: string; visible?: boolean; children?: { id: string; visible?: boolean; type: string }[] }[] } }
 export interface SyncProgress { team: TeamPage; done: number; total: number; finished: boolean; draftReady?: boolean; files?: FileSyncStatus[] }
 export class SyncBusyError extends Error { constructor() { super("이 팀의 동기화가 실행 중이에요. 잠시 뒤 다시 시도해 주세요."); } }
@@ -40,7 +40,12 @@ export function createSyncEngine(deps: {
   const progress = (job: Job, team: TeamPage, finished = false): SyncProgress => ({ team: canonicalTeam(team), done: job.next,
     total: job.files.length, finished, draftReady: finished, files: job.files.map((f) => f.status) });
   async function locked<T>(team: TeamPage, work: () => Promise<T>) {
-    return withIndexLock(store, team, work, () => new SyncBusyError());
+    return withIndexLock(store, team, async () => {
+      if (await store.get(`viewfinder:rest-cancel:active:${canonicalTeam(team)}`)) {
+        throw new Error("REST 작업 취소 정리가 남아 있습니다. 관리자 가져오기 화면에서 취소를 다시 실행해 주세요.");
+      }
+      return work();
+    }, () => new SyncBusyError());
   }
   async function getTeamIndex(team: TeamPage) {
     const scope = canonicalTeam(team);
