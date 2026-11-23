@@ -37,6 +37,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 const hash = (value: unknown) => createHash("sha256").update(canonical(value)).digest("hex");
+export { hash as snapshotHash };
 const content = ({ syncedAt: _syncedAt, ...data }: IndexedScreen) => { void _syncedAt; return hash(data); };
 
 /** 외부 API 없이 주입된 저장소만 사용한다. 운영에는 서버 핸들러가 저장소를 주입한다. */
@@ -44,6 +45,9 @@ export function createMcpImporter(store: KvStore, now = Date.now) {
   const locked = <T>(team: SearchTeam, work: () => Promise<T>) => withIndexLock(store, team, work,
     () => new McpImportError("이 팀의 인덱스가 작업 중입니다. 잠시 후 다시 시도해 주세요."));
   async function readBase(team: SearchTeam) {
+    if (await store.get(`viewfinder:rest-cancel:active:${team}`)) {
+      throw new McpImportError("REST 작업 취소 정리를 먼저 완료해 주세요. 관리자 화면에서 취소 재시도가 가능합니다.");
+    }
     // 준비된 REST 초안도 막는다. 나중에 오래된 REST 초안이 MCP 추가 화면을 지우는 일을 방지한다.
     if (await store.get(`viewfinder:multi-job:${team}`) || await store.get(`viewfinder:multi-draft:${team}`)) {
       throw new McpImportError("REST 동기화 작업 또는 검토 중인 초안이 있습니다. 먼저 해당 작업을 정리해 주세요.");

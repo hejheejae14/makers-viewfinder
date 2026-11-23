@@ -18,5 +18,5 @@
   border-radius: var(--mds-radius-10);
 }
 .facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--mds-space-8); }
-.issues { padding-left: var(--mds-space-24); }
+.issues { padding-left: var(--mds-space-24); overflow-wrap: anywhere; }
 .selectField { border: 0; min-width: 0; }

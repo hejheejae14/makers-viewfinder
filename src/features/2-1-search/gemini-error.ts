@@ -1,7 +1,7 @@
 import type { SafeGeminiHttpError } from "./gemini-http-error";
 
 export type GeminiStage = "interpret" | "judge";
-export type GeminiErrorKind = "network" | "http-api" | "empty" | "json" | "schema" | "semantic";
+export type GeminiErrorKind = "network" | "http-api" | "empty" | "json" | "schema" | "semantic" | "timeout" | "payload";
 
 /** 브라우저 메모리용 허용 목록. 요청·응답 원문, 키, 헤더는 포함하지 않는다. */
 export interface GeminiDiagnostic {

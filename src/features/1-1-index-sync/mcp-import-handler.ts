@@ -3,6 +3,7 @@ import { SEARCH_TEAMS } from "../../lib/screen-identity";
 import { authorize, json } from "./auth";
 import { getStore, type KvStore } from "./store";
 import { createMcpImporter, McpImportError } from "./mcp-import";
+import { createRestCanceller } from "./rest-cancel";
 
 const digest = (v: string) => createHash("sha256").update(v).digest();
 export const MAX_IMPORT_BYTES = 2_000_000;
@@ -39,15 +40,20 @@ export async function handleMcpImport(request: Request, store: () => KvStore = g
     try { input = JSON.parse(body); } catch { return json({ error: "올바른 JSON 파일을 선택해 주세요." }, 400); }
     const team = SEARCH_TEAMS.find(t => t === input?.team);
     if (!team) return json({ error: "앱·플그·크루·공홈 중 팀을 선택해 주세요." }, 400);
-    if (input.action !== "review" && input.action !== "publish") return json({ error: "review 또는 publish 작업이 필요합니다." }, 400);
-    if (input.action === "publish" && (typeof input.id !== "string" || !/^[a-f0-9-]{36}$/.test(input.id) || input.confirmed !== true)) {
+    if (!["review", "publish", "cancel-review", "cancel-rest"].includes(input.action)) return json({ error: "올바른 검토·반영·취소 작업이 필요합니다." }, 400);
+    if ((input.action === "publish" || input.action === "cancel-rest") && (typeof input.id !== "string" || !/^[a-f0-9-]{36}$/.test(input.id) || input.confirmed !== true)) {
       return json({ error: "검토 식별자와 명시적인 반영 확인이 필요합니다." }, 400);
     }
-    const importer = createMcpImporter(store());
+    const storage = store();
+    if (input.action === "cancel-review" || input.action === "cancel-rest") {
+      const canceller = createRestCanceller(storage);
+      return json(input.action === "cancel-review" ? await canceller.review(team) : await canceller.cancel(team, input.id));
+    }
+    const importer = createMcpImporter(storage);
     return json(input.action === "review" ? await importer.review(team, input.index) : await importer.publish(team, input.id));
   } catch (error) {
     if (error instanceof McpImportError) return json({ error: error.message }, error.status);
     // 저장소 오류·요청 원문·인증 정보를 클라이언트나 로그로 전달하지 않는다.
-    return json({ error: "가져오기를 완료하지 못했습니다. 운영 반영 여부를 확인한 뒤 다시 검토해 주세요." }, 500);
+    return json({ error: "요청을 완료하지 못했습니다. 상태를 확인한 뒤 재시도해 주세요. 취소 도중 오류라면 REST 작업 상태 확인에서 정리를 재개할 수 있습니다." }, 500);
   }
 }

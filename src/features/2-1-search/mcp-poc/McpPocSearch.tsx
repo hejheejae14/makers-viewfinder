@@ -13,6 +13,7 @@ import { runSearch, type SearchTrace } from "../search-pipeline";
 import { GeminiSearchError, type GeminiDiagnostic } from "../gemini-error";
 import styles from "./McpPocSearch.module.css";
 import { runConnectionDiagnostic, type ConnectionDiagnosticResult } from "./connection-diagnostic";
+import type { JudgePayloadStats } from "../judge-payload";
 
 const TARGET = "14330:42211";
 const QUERY = "앱서비스 홈 화면에서 콘텐츠가 없을 때 표시되는 Empty View";
@@ -40,6 +41,7 @@ export function McpPocSearch() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [calls, setCalls] = useState(0);
+  const [payloadStats, setPayloadStats] = useState<JudgePayloadStats>();
   const [searchWarnings, setSearchWarnings] = useState<string[]>([]);
   const [diagnostic, setDiagnostic] = useState<GeminiDiagnostic>();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -68,11 +70,13 @@ export function McpPocSearch() {
     locked.current = true; setBusy(true); setMessage("");
     setResponse(undefined); setTrace(undefined); setSelectedId(null); setCalls(0); setDiagnostic(undefined);
     setSearchWarnings([]);
+    setPayloadStats(undefined);
     const controller = new AbortController(); request.current = controller;
     try {
       const temporary = await load(controller.signal);
       if (!search) { setMessage(`임시 인덱스 ${temporary.screens.length}개 확인 · Gemini 호출 0회`); return; }
       const ai = createGeminiSearchAi(session.apiKey, { onRequest: () => setCalls(n => n + 1),
+        onPayload: stats => setPayloadStats(stats),
         onRetry: () => setMessage("Gemini의 503 일시 오류로 잠시 기다린 뒤 한 번 재시도합니다. 추가 사용량이 발생할 수 있어요.") });
       const result = await runSearch({ query, team: "앱", index: temporary, signal: controller.signal,
         ai, onTrace: value => { setTrace(summarizeTrace(value)); setSearchWarnings(value.interpretation?.warnings ?? []); },
@@ -158,6 +162,7 @@ export function McpPocSearch() {
       </p>}
     </Callout>}
     <p aria-live="polite">검색 실행 Gemini 요청 {calls}회 · 단계: {trace?.stage ?? "대기"}</p>
+    {payloadStats && <p>판정 입력 JSON {payloadStats.inputChars.toLocaleString()}자 · 후보 {payloadStats.candidateCount}개 · 일부 정보 생략 후보 {payloadStats.limitedCandidates}개 · 생략 근거 {payloadStats.omittedEvidence}개. 문자 수는 토큰 수가 아닙니다.</p>}
     {index && <details><summary>실제 임시 인덱스: {index.screens.length}개</summary><ul>{index.screens.map(s => <li key={screenIdentity(s)}>{s.name} · {s.id} · {s.pageName}</li>)}</ul></details>}
     {response && <Callout>대상 {TARGET}: {results.some(r => r.screen.id === TARGET) ? `${results.findIndex(r => r.screen.id === TARGET) + 1}순위 · ${results.find(r => r.screen.id === TARGET)!.verdict}` : "최종 결과에 없음"}. 이는 실제 Gemini 응답이며 정답 노출을 강제하지 않습니다.</Callout>}
     {response && !results.length && <Callout>찾지 못함: 결과를 억지로 채우지 않았습니다. 아래 진단에서 후보 포함 여부와 판정을 확인해 주세요.</Callout>}

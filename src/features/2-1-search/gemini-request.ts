@@ -5,21 +5,33 @@ import { parseGeminiJson } from "./gemini-validation";
 import { readSafeGeminiHttpError } from "./gemini-http-error";
 import { GEMINI_MODELS_API, GEMINI_GENERATION_DEFAULTS, GEMINI_STORE } from "./gemini-config";
 import { requestWith503Retry, type RetryEvents } from "./gemini-retry";
+import { withGeminiDeadline } from "./gemini-deadline";
 
 const FINISH_REASONS = new Set(["STOP", "MAX_TOKENS", "SAFETY", "RECITATION", "LANGUAGE", "OTHER", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "MALFORMED_FUNCTION_CALL", "IMAGE_SAFETY", "UNEXPECTED_TOOL_CALL", "TOO_MANY_TOOL_CALLS", "NO_IMAGE", "FINISH_REASON_UNSPECIFIED"]);
 
 /** 브라우저 어댑터의 통신 처리. 테스트는 fetch를 바꿔 외부 연결 없이 실행한다. */
-export async function requestGeminiJson({ apiKey, model, stage, systemInstruction, input, signal, onRequest, onRetry }: {
+interface GeminiRequest {
   apiKey: string; model: string; stage: GeminiStage; systemInstruction: string; input: string; signal?: AbortSignal;
-} & RetryEvents, fetcher: typeof fetch = fetch): Promise<{ value: unknown; httpStatus: number; finishReason: string | null }> {
+  timeoutMs?: number;
+}
+export async function requestGeminiJson(args: GeminiRequest & RetryEvents, fetcher: typeof fetch = fetch) {
+  return withGeminiDeadline(args.stage, args.signal,
+    signal => requestWithinDeadline({ ...args, signal }, fetcher), args.timeoutMs);
+}
+
+async function requestWithinDeadline({ apiKey, model, stage, systemInstruction, input, signal, onRequest, onRetry }: GeminiRequest & RetryEvents,
+  fetcher: typeof fetch): Promise<{ value: unknown; httpStatus: number; finishReason: string | null }> {
+  const requestBody = JSON.stringify({ systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents: [{ role: "user", parts: [{ text: input }] }],
+    generationConfig: { responseMimeType: "application/json", ...GEMINI_GENERATION_DEFAULTS }, store: GEMINI_STORE });
+  if (new TextEncoder().encode(requestBody).length > 300_000) {
+    throw new GeminiSearchError("payload", stage, "Gemini 요청 크기 한도를 초과해 전송하지 않았어요. 검색어를 나눠 주세요.");
+  }
   let response: Response;
   try {
     response = await requestWith503Retry(() => fetcher(`${GEMINI_MODELS_API}/${encodeURIComponent(model)}:generateContent`, {
       method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: input }] }],
-        generationConfig: { responseMimeType: "application/json", ...GEMINI_GENERATION_DEFAULTS }, store: GEMINI_STORE,
-      }), cache: "no-store", signal,
+      body: requestBody, cache: "no-store", signal,
     }), { signal, onRequest, onRetry });
   } catch (error) {
     if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;

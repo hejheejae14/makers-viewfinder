@@ -14,6 +14,7 @@ registerHooks({ resolve(specifier, context, nextResolve) {
   return nextResolve(specifier, context);
 } });
 const { createGeminiSearchAi } = await import('./gemini.ts');
+const { requestGeminiJson } = await import('./gemini-request.ts');
 const query = '홈 화면 Empty View';
 const conditions = [
   { id: 'home', kind: 'screen', label: '홈 화면', sourceText: '홈 화면', requirement: 'must', scope: 'screen', aliases: ['홈'] },
@@ -77,6 +78,39 @@ test('공통 interpret·judge는 각각 503 한 번만 재시도하고 실제 �
     await adapter.judge({ query, team: '앱', candidates: [], conditions });
   });
   assert.equal(calls, 4); assert.equal(notices, 4); assert.equal(retries, 2);
+});
+
+test('요청·본문 수신·503 재시도 대기를 포함한 시간 초과는 추가 요청 없이 종료한다',async()=>{
+  for(const mode of ['fetch','body','retry']){
+    let calls=0;
+    const fetcher=async(_url,{signal})=>{
+      calls++;
+      if(mode==='retry')return new Response('{}',{status:503});
+      if(mode==='body')return {ok:true,status:200,text:()=>new Promise(()=>{})};
+      return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
+    };
+    await assert.rejects(()=>requestGeminiJson({apiKey:key,model:'fixture',stage:'judge',systemInstruction:'fixture',input:'{}',timeoutMs:5},fetcher),errorKind('timeout',{stage:'judge'}));
+    assert.equal(calls,1);
+  }
+});
+
+test('전송 바이트 한도를 넘으면 키나 원문을 표시하지 않고 API 호출 전 차단',async()=>{
+  await assert.rejects(()=>requestGeminiJson({apiKey:key,model:'fixture',stage:'interpret',systemInstruction:'fixture',input:'x'.repeat(300_001)},async()=>assert.fail('추가 호출 금지')),errorKind('payload'));
+});
+
+test('일반 Gemini 어댑터는 압축된 근거만 전송하고 전송 범위를 로컬 판정에 연결한다',async()=>{
+  const {toAiCandidates}=await import('./verification.ts');
+  const candidate={screen:{id:'1:1',fileKey:'FIXTURE',teamPage:'앱',name:'홈',texts:['홈','아직 게시물이 없어요'],components:[],tokens:[]},matchedConditions:[],unmatchedConditions:[]};
+  let stats;
+  await mocked(async(_url,request)=>{
+    const input=JSON.parse(JSON.parse(request.body).contents[0].parts[0].text);
+    assert.ok(input.candidates[0].evidence.length>0);assert.equal('texts' in input.candidates[0],false);
+    return envelope(judgement);
+  },async()=>{
+    const result=await createGeminiSearchAi(key,{onPayload:s=>{stats=s;}}).judge({query,team:'앱',candidates:toAiCandidates([candidate]),conditions});
+    assert.ok(result[0].providedEvidenceRefs.includes('texts/1'));assert.equal(result[0].evidenceIncomplete,false);
+  });
+  assert.ok(Object.values(stats).every(v=>typeof v==='number'));
 });
 
 test('JSON 모드 프롬프트는 강화된 필드·조건 관계·근거 범위를 명시하며 서버 스키마를 전제하지 않음', () => {
