@@ -196,7 +196,7 @@ export function SearchView({
             : undefined,
     }));
     try {
-      const ai = createGeminiSearchAi(session.apiKey, { onRetry: () => setRetryNotice("Gemini 서버가 일시적으로 혼잡해 잠시 기다린 뒤 한 번 재시도합니다.") });
+      const ai = createGeminiSearchAi(session.apiKey, { onRetry: () => { if (!controller.signal.aborted) setRetryNotice("Gemini 서버가 일시적으로 혼잡해 잠시 기다린 뒤 한 번 재시도합니다."); } });
       const response = await searchTeam({
         query,
         team,
@@ -214,7 +214,7 @@ export function SearchView({
         status: "error",
         message: error instanceof Error ? error.message : "검색하지 못했어요.",
       });
-    }
+    } finally { if (request.current === controller) setRetryNotice(""); }
   }
 
   const syncedAt = index && index !== "error" ? index.syncedAt : undefined;

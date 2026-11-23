@@ -26,6 +26,8 @@ export async function requestWith503Retry(send: () => Promise<Response>, events:
     // 서버가 긴 대기를 요구하면 짧게 무시하고 재요청하지 않는다.
     if (Number.isFinite(serverDelay) && serverDelay > 10000) return response;
     const delayMs = Math.max(1000 + Math.floor(Math.random() * 500), Number.isFinite(serverDelay) ? serverDelay : 0);
+    await response.body?.cancel().catch(() => undefined);
+    events.signal?.throwIfAborted();
     events.onRetry?.(delayMs);
     await sleep(delayMs, events.signal);
   }

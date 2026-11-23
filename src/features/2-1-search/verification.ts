@@ -37,7 +37,8 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
     if (judgement.relevance === "irrelevant" || !judgement.checks?.length) continue;
     const atoms = getEvidence(candidate.screen);
     const byRef = new Map(atoms.map((atom) => [atom.ref, atom]));
-    const checks = conditions.map((condition) => validateCheck(condition, judgement.checks ?? [], byRef, conditions));
+    const provided = judgement.providedEvidenceRefs ? new Set(judgement.providedEvidenceRefs) : undefined;
+    const checks = conditions.map((condition) => validateCheck(condition, judgement.checks ?? [], byRef, conditions, provided));
     const variants = atoms.filter((atom) => atom.source === "variant").map((atom) => atom.value);
     const mixedStates = variants.some((value) => /(?:state|status)\s*=\s*empty\b/i.test(value))
       && variants.some((value) => /(?:state|status)\s*=\s*(?:filled|populated|nonempty)\b/i.test(value));
@@ -81,7 +82,7 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
     const allRequired = required.every((condition) => get(condition).status === "확인됨");
     const clearExclusions = excluded.every((condition) => get(condition).status === "불충족");
     const contradicted = required.some((condition) => get(condition).status === "불충족");
-    const exact = !recommendation && !conditions.some(c => c.sourceVerified === false) && allRequired && clearExclusions && positive.some((condition) => condition.kind !== "service" && get(condition).status === "확인됨");
+    const exact = !judgement.evidenceIncomplete && !recommendation && !conditions.some(c => c.sourceVerified === false) && allRequired && clearExclusions && positive.some((condition) => condition.kind !== "service" && get(condition).status === "확인됨");
     const tier = exact ? 0 : recommendation ? 3 : contradicted ? 2 : judgement.relevance === "high" ? 1 : 2;
     const reasons = positive.map((condition) => {
       const check = get(condition);
@@ -90,9 +91,11 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
     });
     if (recommendation) reasons.unshift(`유사 화면 추천: 정답으로 확인한 화면은 아닙니다.${relatedAtoms.length ? ` 실제 관련 단서: ${relatedAtoms.slice(0, 3).map(atom => `${atom.source} '${atom.value}'`).join(", ")}` : ""}`);
     if (judgement.recommendationOnly) reasons.push("AI의 부정 판정 또는 정답 미확인으로 인해 부분 일치 추천으로만 표시합니다.");
+    if (judgement.evidenceIncomplete) reasons.unshift("요청 크기를 제한하기 위해 일부 화면 정보는 AI에 전달하지 않았습니다. 전체 조건을 확정하지 않고 부분 일치로 표시합니다.");
     const unmetConditions = conditions.filter((condition) => condition.requirement === "exclude"
       ? get(condition).status !== "불충족" : (condition.requirement ?? "must") === "must" && get(condition).status !== "확인됨")
       .map((condition) => `${condition.label}: ${get(condition).status} — ${get(condition).explanation}`);
+    if (judgement.evidenceIncomplete) unmetConditions.push("일부 화면 정보 미전달: 생략된 정보의 상태·제외조건은 확인하지 못했습니다.");
     verified.push({ result: { screen: candidate.screen, verdict: exact ? "정답 후보" : "부분 일치", reasons, ...(exact ? {} : { unmetConditions }) }, checks, tier, aiOrder });
   }
   // 등급 사이의 안전장치만 적용한다. 같은 등급 안의 의미적 관련도 순서는 AI 판단을 유지한다.
@@ -100,11 +103,12 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
   return nearbyOnly ? sorted.slice(0, 3) : sorted;
 }
 
-function validateCheck(condition: SearchCondition, raw: ConditionCheck[], byRef: Map<string, EvidenceAtom>, conditions: SearchCondition[]): ConditionCheck {
+function validateCheck(condition: SearchCondition, raw: ConditionCheck[], byRef: Map<string, EvidenceAtom>, conditions: SearchCondition[], provided?: Set<string>): ConditionCheck {
   const found = raw.filter((check) => check.conditionId === condition.id);
   const unknown = (explanation: string): ConditionCheck => ({ conditionId: condition.id!, status: "확인 불가", evidenceRefs: [], explanation });
   if (found.length !== 1) return unknown("조건별 판정이 누락되었거나 중복됨");
   const original = found[0];
+  if (provided && original.evidenceRefs.some(ref => !provided.has(ref))) return unknown("AI에 전달하지 않은 근거를 인용함");
   if (original.evidenceRefs.some((ref) => !byRef.has(ref))) return unknown("AI가 제시한 근거가 인덱스에 없음");
   const atoms = original.evidenceRefs.map((ref) => byRef.get(ref)!);
   const check = { ...original };

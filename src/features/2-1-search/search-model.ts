@@ -50,6 +50,9 @@ export interface AiJudgement {
   checks?: ConditionCheck[];
   /** 알려진 부정 판정/가까운 후보는 검증 후에도 부분 일치 추천으로만 표시한다. */
   recommendationOnly?: boolean;
+  /** 브라우저가 기록하는 전송 범위. AI 응답 필드로 받지 않는다. */
+  providedEvidenceRefs?: string[];
+  evidenceIncomplete?: boolean;
 }
 
 export interface AiCandidate {

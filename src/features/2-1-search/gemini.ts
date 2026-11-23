@@ -1,6 +1,7 @@
 import "client-only";
 
-import { buildInterpretInput, buildJudgeInput, SEARCH_INTERPRET_INSTRUCTIONS, SEARCH_JUDGE_INSTRUCTIONS } from "./judge-prompt";
+import { buildInterpretInput, SEARCH_INTERPRET_INSTRUCTIONS, SEARCH_JUDGE_INSTRUCTIONS } from "./judge-prompt";
+import { prepareJudgeInput, type JudgePayloadStats } from "./judge-payload";
 import { parseInterpretation, parseJudgements } from "./gemini-validation";
 import { requestGeminiJson } from "./gemini-request";
 import { attachGeminiContext } from "./gemini-error";
@@ -13,6 +14,7 @@ interface GeminiOptions {
   model?: string;
   onRequest?: (stage: GeminiStage) => void;
   onRetry?: (stage: GeminiStage, delayMs: number) => void;
+  onPayload?: (stats: JudgePayloadStats) => void;
 }
 
 /** 개인 키는 브라우저의 Gemini 요청에만 사용한다. 공용·환경변수 키 대체 없음. */
@@ -28,9 +30,13 @@ export function createGeminiSearchAi(apiKey: string, options: GeminiOptions = {}
       catch (error) { throw attachGeminiContext(error, "interpret", response.httpStatus, response.finishReason); }
     },
     async judge({ query, team, candidates, conditions, signal }) {
-      const response = await requestGeminiJson({ apiKey: key, model, stage: "judge", systemInstruction: SEARCH_JUDGE_INSTRUCTIONS, input: buildJudgeInput(query, candidates, conditions, team), signal,
+      const payload = prepareJudgeInput(query, candidates, conditions, team);
+      options.onPayload?.(payload.stats);
+      const response = await requestGeminiJson({ apiKey: key, model, stage: "judge", systemInstruction: SEARCH_JUDGE_INSTRUCTIONS, input: payload.input, signal,
         onRequest: () => options.onRequest?.("judge"), onRetry: delay => options.onRetry?.("judge", delay) });
-      try { return parseJudgements(response.value, true); }
+      try {
+        return parseJudgements(response.value, true).map(j => ({ ...j, ...payload.coverage.find(c => c.screenId === j.screenId) }));
+      }
       catch (error) { throw attachGeminiContext(error, "judge", response.httpStatus, response.finishReason); }
     },
   };
