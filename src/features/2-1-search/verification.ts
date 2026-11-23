@@ -25,13 +25,16 @@ export function toAiCandidates(candidates: SearchCandidate[]): AiCandidate[] {
 export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJudgement[], conditions: SearchCondition[], team: TeamPage): VerifiedCandidate[] {
   const seen = new Set<string>();
   const verified: VerifiedCandidate[] = [];
-  for (const [aiOrder, judgement] of judgements.entries()) {
+  const nearbyOnly = judgements.length === 0;
+  const assessed: AiJudgement[] = nearbyOnly ? candidates.map((_, i) => ({ screenId: `candidate-${i + 1}`, verdict: "부분 일치", relevance: "low", recommendationOnly: true, reasons: ["정답을 확인하지 못해 실제 단서가 있는 가까운 화면을 추천"],
+    checks: conditions.map(c => ({ conditionId: c.id!, status: "확인 불가", evidenceRefs: [], scope: "unknown", explanation: "AI의 조건 충족 판정을 확인하지 못함" })) })) : judgements;
+  for (const [aiOrder, judgement] of assessed.entries()) {
     if (seen.has(judgement.screenId)) continue;
     const match = /^candidate-(\d+)$/.exec(judgement.screenId);
     const candidate = match ? candidates[Number(match[1]) - 1] : undefined;
     if (!candidate || candidate.screen.teamPage !== team) continue;
     seen.add(judgement.screenId);
-    if (judgement.relevance === "low" || judgement.relevance === "irrelevant" || !judgement.checks?.length) continue;
+    if (judgement.relevance === "irrelevant" || !judgement.checks?.length) continue;
     const atoms = getEvidence(candidate.screen);
     const byRef = new Map(atoms.map((atom) => [atom.ref, atom]));
     const checks = conditions.map((condition) => validateCheck(condition, judgement.checks ?? [], byRef, conditions));
@@ -60,9 +63,13 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
     }
     const positive = conditions.filter((condition) => condition.requirement !== "exclude");
     const required = conditions.filter((condition) => (condition.requirement ?? "must") === "must");
-    const excluded = conditions.filter((condition) => condition.requirement === "exclude");
+    const excluded = conditions.filter((condition) => condition.requirement === "exclude" && condition.sourceVerified !== false);
     const get = (condition: SearchCondition) => checks.find((check) => check.conditionId === condition.id)!;
     if (excluded.some((condition) => get(condition).status === "확인됨")) continue;
+    if (excluded.some(condition => atoms.some(atom => atom.strength === "direct" && conditionMatches(atom, condition)))) continue;
+    const relatedAtoms = atoms.filter(atom => atom.strength === "direct" && atom.source !== "팀" && positive.some(condition => condition.kind !== "service" && conditionMatches(atom, condition)));
+    const recommendation = judgement.recommendationOnly || judgement.relevance === "low";
+    const validRefs = judgement.checks.every(check => check.evidenceRefs.every(ref => byRef.has(ref)));
     const supporting = positive.filter((condition) => condition.kind !== "service")
       .some((condition) => {
         const check = get(condition);
@@ -70,24 +77,27 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
           && check.evidenceRefs.some((ref) => byRef.get(ref)?.strength === "direct");
       });
     // 팀 소속이나 이름만 보고 만들어낸 무관한 결과로 개수를 채우지 않는다.
-    if (!supporting) continue;
+    if (!supporting && !(recommendation && validRefs && relatedAtoms.length)) continue;
     const allRequired = required.every((condition) => get(condition).status === "확인됨");
     const clearExclusions = excluded.every((condition) => get(condition).status === "불충족");
     const contradicted = required.some((condition) => get(condition).status === "불충족");
-    const exact = allRequired && clearExclusions && positive.some((condition) => condition.kind !== "service" && get(condition).status === "확인됨");
-    const tier = exact ? 0 : contradicted ? 2 : judgement.relevance === "high" ? 1 : 2;
+    const exact = !recommendation && !conditions.some(c => c.sourceVerified === false) && allRequired && clearExclusions && positive.some((condition) => condition.kind !== "service" && get(condition).status === "확인됨");
+    const tier = exact ? 0 : recommendation ? 3 : contradicted ? 2 : judgement.relevance === "high" ? 1 : 2;
     const reasons = positive.map((condition) => {
       const check = get(condition);
       const quotes = check.evidenceRefs.map((ref) => { const atom = byRef.get(ref)!; return `${atom.source} '${atom.value}'`; }).join(", ");
       return `[${check.status}] ${condition.label}: ${quotes || "인덱스 근거 없음"}${check.explanation ? ` — AI 해석/검증 안내: ${check.explanation}` : ""}`;
     });
+    if (recommendation) reasons.unshift(`유사 화면 추천: 정답으로 확인한 화면은 아닙니다.${relatedAtoms.length ? ` 실제 관련 단서: ${relatedAtoms.slice(0, 3).map(atom => `${atom.source} '${atom.value}'`).join(", ")}` : ""}`);
+    if (judgement.recommendationOnly) reasons.push("AI의 부정 판정 또는 정답 미확인으로 인해 부분 일치 추천으로만 표시합니다.");
     const unmetConditions = conditions.filter((condition) => condition.requirement === "exclude"
       ? get(condition).status !== "불충족" : (condition.requirement ?? "must") === "must" && get(condition).status !== "확인됨")
       .map((condition) => `${condition.label}: ${get(condition).status} — ${get(condition).explanation}`);
     verified.push({ result: { screen: candidate.screen, verdict: exact ? "정답 후보" : "부분 일치", reasons, ...(exact ? {} : { unmetConditions }) }, checks, tier, aiOrder });
   }
   // 등급 사이의 안전장치만 적용한다. 같은 등급 안의 의미적 관련도 순서는 AI 판단을 유지한다.
-  return verified.sort((a, b) => a.tier - b.tier || a.aiOrder - b.aiOrder);
+  const sorted = verified.sort((a, b) => a.tier - b.tier || a.aiOrder - b.aiOrder);
+  return nearbyOnly ? sorted.slice(0, 3) : sorted;
 }
 
 function validateCheck(condition: SearchCondition, raw: ConditionCheck[], byRef: Map<string, EvidenceAtom>, conditions: SearchCondition[]): ConditionCheck {
@@ -98,6 +108,7 @@ function validateCheck(condition: SearchCondition, raw: ConditionCheck[], byRef:
   if (original.evidenceRefs.some((ref) => !byRef.has(ref))) return unknown("AI가 제시한 근거가 인덱스에 없음");
   const atoms = original.evidenceRefs.map((ref) => byRef.get(ref)!);
   const check = { ...original };
+  if (condition.sourceVerified === false) return { ...check, status: "추정", explanation: "검색어 원문과의 연결을 확인하지 못한 AI 해석입니다. 조건 충족을 확정하지 않습니다." };
   if (check.status === "확인 불가") return check;
   if (!atoms.length) return unknown("검증 가능한 직접 근거가 없음");
   if (check.status === "추정") return check;

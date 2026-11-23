@@ -65,6 +65,20 @@ test('interpret·judge 모두 개인 키와 기존 JSON 모드 설정 사용, �
   assert.equal(calls, 2);
 });
 
+test('공통 interpret·judge는 각각 503 한 번만 재시도하고 실제 요청 수를 알린다', async () => {
+  let calls = 0, notices = 0, retries = 0;
+  const adapter = createGeminiSearchAi(key, { onRequest: () => notices++, onRetry: () => retries++ });
+  await mocked(async () => {
+    calls++;
+    if (calls === 1 || calls === 3) return Response.json({}, { status: 503 });
+    return envelope(calls === 2 ? interpretation : judgement);
+  }, async () => {
+    await adapter.interpret({ query, team: '앱' });
+    await adapter.judge({ query, team: '앱', candidates: [], conditions });
+  });
+  assert.equal(calls, 4); assert.equal(notices, 4); assert.equal(retries, 2);
+});
+
 test('JSON 모드 프롬프트는 강화된 필드·조건 관계·근거 범위를 명시하며 서버 스키마를 전제하지 않음', () => {
   for (const field of INTERPRET_SCHEMA.properties.conditions.items.required) assert.ok(SEARCH_INTERPRET_INSTRUCTIONS.includes(field));
   for (const field of JUDGE_SCHEMA.items.required) assert.ok(SEARCH_JUDGE_INSTRUCTIONS.includes(field));
@@ -199,14 +213,33 @@ test('정상 종료가 아닌 응답은 일부 JSON이 유효해도 성공으로
   await mocked(async () => envelope(interpretation, 'PRIVATE_CANARY'), () => assert.rejects(interpret, errorKind('http-api', { finishReason: 'UNRECOGNIZED' })));
 });
 
-test('의미 오류: 원문에 없는 조건·임의 선호·ID 중복·잘못된 연결 관계 거부', async () => {
+test('의미 오류: ID 중복·잘못된 연결 관계는 여전히 거부', async () => {
   const cases = [
-    { conditions: [{ ...conditions[0], sourceText: 'PRIVATE_CANARY' }] },
-    { conditions: [{ ...conditions[0], requirement: 'should' }] },
     { conditions: [conditions[0], conditions[0]] },
     { conditions: [{ ...conditions[0], relatedTo: 'PRIVATE_CANARY' }] },
   ];
   for (const value of cases) await mocked(async () => envelope(value), () => assert.rejects(interpret, errorKind('semantic', { stage: 'interpret', httpStatus: 200, finishReason: 'STOP' })));
+});
+
+test('원문 인용 불일치는 경고와 추정 표기로 계속 진행하고 임의 선호는 필수조건으로 보존', async () => {
+  await mocked(async () => envelope({ conditions: [{ ...conditions[0], sourceText: '메인 페이지' }] }), async () => {
+    const result = await interpret();
+    assert.equal(result.conditions[0].sourceVerified, false);
+    assert.ok(result.warnings.some(w => w.includes('원문 인용')));
+  });
+  const result = parseInterpretation({ conditions: [{ ...conditions[0], requirement: 'should' }] }, query);
+  assert.equal(result.conditions[0].requirement, 'must');
+  assert.ok(result.warnings.length);
+  const equivalent = parseInterpretation({ conditions: [{ ...conditions[1], sourceText: 'emptyview' }] }, query);
+  assert.notEqual(equivalent.conditions[0].sourceVerified, false);
+});
+
+test('불충족 후보는 명시적으로 추천 전용 처리하고 다른 잘못된 구조는 여전히 거부', () => {
+  const value = structuredClone(judgement); value[0].verdict = '불충족 후보'; value[0].relevance = 'low';
+  const result = parseJudgements(value, true);
+  assert.equal(result[0].verdict, '부분 일치'); assert.equal(result[0].recommendationOnly, true);
+  value[0].verdict = '임의의값';
+  assert.throws(() => parseJudgements(value, true), errorKind('schema', { fieldPath: '$[0].verdict' }));
 });
 
 test('일반 검색과 MCP가 쓰는 같은 어댑터에서 영역 Empty 근거와 부분 일치 판정 보존', async () => {

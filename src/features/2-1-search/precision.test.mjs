@@ -125,7 +125,8 @@ test("팀 밖 데이터를 판정 AI로 전달하지 않고 동일 node ID도 �
   } });
   assert.equal(seen.length, 2);
   assert.deepEqual(seen.map((item) => item.screenId), ["candidate-1", "candidate-2"]);
-  assert.deepEqual(result.results, []);
+  assert.equal(result.results.length, 2);
+  assert.ok(result.results.every(item => item.screen.teamPage === "앱" && item.verdict === "부분 일치"));
 });
 
 test("범위가 다른 팀의 인덱스는 AI 호출 전에 거부", async () => {
@@ -147,9 +148,36 @@ test("AI가 누락한 명시적 홈·빈 상태 조건을 복구하고 경고를
 });
 
 test("원문에 없는 필수조건·잘못된 구조를 조용히 적용하지 않는다", () => {
-  assert.throws(() => parseInterpretation({ conditions: [{ ...home, sourceText: "오류" }] }, "홈 화면"), /원문과 연결/);
+  const uncertain = parseInterpretation({ conditions: [{ ...home, sourceText: "오류" }] }, "홈 화면");
+  assert.equal(uncertain.conditions[0].sourceVerified, false);
+  assert.ok(uncertain.warnings.length);
   assert.throws(() => parseInterpretation({ conditions: [{ ...home }, null] }, "홈 화면"), /예상과 다른/);
   assert.throws(() => parseJudgements([{ screenId: "candidate-1", verdict: "정답 후보", reasons: ["근거"] }], true), /예상과 다른/);
+});
+
+test("부정 판정·low 후보는 실제 관련 단서가 있으면 정답 아래에서 솔직하게 추천", () => {
+  const cs = [screen("nearby"), screen("exact")];
+  const result = verify(cs, [
+    { ...judgement("candidate-1", [check("home", "확인됨", ["texts/0"]), check("empty", "확인됨", ["texts/1"])]), recommendationOnly: true },
+    judgement("candidate-2", [check("home", "확인됨", ["texts/0"]), check("empty", "확인됨", ["texts/1"])])
+  ]);
+  assert.deepEqual(result.map(r => [r.result.screen.id, r.result.verdict]), [["exact", "정답 후보"], ["nearby", "부분 일치"]]);
+  assert.ok(result[1].result.reasons.some(r => r.includes("유사 화면 추천")));
+});
+
+test("원문 연결이 불확실한 조건은 실제 단서가 있어도 정답으로 승격하지 않음", () => {
+  const result = verify([screen("one")], [judgement("candidate-1", [check("home", "확인됨", ["texts/0"]), check("empty", "확인됨", ["texts/1"])])], [home, { ...empty, sourceVerified: false }]);
+  assert.equal(result[0].result.verdict, "부분 일치");
+  assert.ok(result[0].result.unmetConditions.some(c => c.includes("추정")));
+});
+
+test("정답 없음은 최대 3개 실제 단서가 있는 후보만 추천, 무관·다른 팀·제외조건은 유지", () => {
+  const related = Array.from({ length: 5 }, (_, i) => screen(`near-${i}`));
+  const result = verify(related, []);
+  assert.equal(result.length, 3); assert.ok(result.every(r => r.result.verdict === "부분 일치"));
+  assert.deepEqual(verify([screen("unrelated", { texts: ["회원 설정"], section: undefined, name: "Frame" })], []), []);
+  assert.deepEqual(verify([screen("other", { teamPage: "플그" })], []), []);
+  assert.deepEqual(verify([screen("excluded")], [], [home, { ...empty, requirement: "exclude" }]), []);
 });
 
 test("선호·제외 조건을 필수로 승격하지 않고 제외가 확인되면 반환하지 않는다", () => {

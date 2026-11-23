@@ -40,6 +40,7 @@ export function McpPocSearch() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [calls, setCalls] = useState(0);
+  const [searchWarnings, setSearchWarnings] = useState<string[]>([]);
   const [diagnostic, setDiagnostic] = useState<GeminiDiagnostic>();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [connectionResults, setConnectionResults] = useState<ConnectionDiagnosticResult[]>([]);
@@ -66,16 +67,15 @@ export function McpPocSearch() {
     if (!session || locked.current) return;
     locked.current = true; setBusy(true); setMessage("");
     setResponse(undefined); setTrace(undefined); setSelectedId(null); setCalls(0); setDiagnostic(undefined);
+    setSearchWarnings([]);
     const controller = new AbortController(); request.current = controller;
     try {
       const temporary = await load(controller.signal);
       if (!search) { setMessage(`임시 인덱스 ${temporary.screens.length}개 확인 · Gemini 호출 0회`); return; }
-      const ai = createGeminiSearchAi(session.apiKey);
+      const ai = createGeminiSearchAi(session.apiKey, { onRequest: () => setCalls(n => n + 1),
+        onRetry: () => setMessage("Gemini의 503 일시 오류로 잠시 기다린 뒤 한 번 재시도합니다. 추가 사용량이 발생할 수 있어요.") });
       const result = await runSearch({ query, team: "앱", index: temporary, signal: controller.signal,
-        ai: {
-          interpret: input => { setCalls(n => n + 1); return ai.interpret(input); },
-          judge: input => { setCalls(n => n + 1); return ai.judge(input); },
-        }, onTrace: value => setTrace(summarizeTrace(value)),
+        ai, onTrace: value => { setTrace(summarizeTrace(value)); setSearchWarnings(value.interpretation?.warnings ?? []); },
       });
       setResponse(result);
       setSelectedId(result.results[0] ? screenIdentity(result.results[0].screen) : null);
@@ -136,17 +136,18 @@ export function McpPocSearch() {
       </table>}
     </section>
     </details>
-    <Callout>검색 실행 시 {DEFAULT_GEMINI_MODEL} 요청 최대 2회(해석 1회 + 판정 1회), 자동 재시도 없음.
+    <Callout>검색 실행 시 {DEFAULT_GEMINI_MODEL} 기본 2회(해석 1회 + 판정 1회), 503일 때만 단계별 1회 재시도로 최대 4회 요청합니다. 추가 사용량이 발생할 수 있어요.
       무료 한도 내 무료이며 유료 예시로 입력 1만 + 출력 2천 토큰은 약 $0.008입니다. 실제 비용은 사용량에 따라 달라집니다.
       검색어와 4개 후보의 텍스트가 Google로 전송됩니다. <a href="https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite" target="_blank" rel="noreferrer">가격표</a></Callout>
     <form className={styles.form} onSubmit={submit}>
       <Select label="팀" value="앱" options={[{ value: "앱", label: "앱 (PoC)" }]} onChange={() => {}} />
       <TextField label="찾고 싶은 화면" value={query} onChange={event => setQuery(event.target.value)} />
       <Button type="button" disabled={!session || busy} onClick={() => void execute(false)}>임시 인덱스 확인 (AI 호출 없음)</Button>
-      <Button type="submit" disabled={!session || busy || !query.trim()}>{busy ? "실행 중…" : "Gemini 검색 실행 (최대 2회)"}</Button>
+      <Button type="submit" disabled={!session || busy || !query.trim()}>{busy ? "실행 중…" : "Gemini 검색 실행 (재시도 포함 최대 4회)"}</Button>
     </form>
     {session === null && <Callout>개인 키 등록·변경에서 팀 비밀번호와 개인 Gemini 키를 설정해 주세요. 설정을 열기만 하면 Gemini를 호출하지 않습니다.</Callout>}
     {message && <Callout>{message}</Callout>}
+    {!!searchWarnings.length && <Callout>{searchWarnings.join(" ")}</Callout>}
     {diagnostic && <Callout tone="danger">
       실패 단계: {diagnostic.stage} · 유형: {diagnostic.kind} · HTTP: {diagnostic.httpStatus ?? "응답 없음"} ·
       finishReason: {diagnostic.finishReason ?? "확인 불가"} · 오류 필드: {diagnostic.fieldPath ?? "해당 없음"}
