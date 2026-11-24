@@ -1,6 +1,7 @@
 import type { SearchResponse, TeamIndex, TeamPage } from "../../lib/types";
 import { candidateBudget, retrieveCandidates } from "./candidate-search";
 import { canonicalTeam } from "../../lib/screen-identity";
+import { isDescriptionFrame } from "../1-1-index-sync/screen-rules";
 import { guardUnderstanding } from "./query-understanding";
 import { toAiCandidates, verifyJudgements } from "./verification";
 import type { AiJudgement, QueryUnderstanding, SearchAi } from "./search-model";
@@ -29,7 +30,7 @@ export async function runSearch({ query, team, index, ai, signal, onTrace }: {
   team = canonicalTeam(team);
   if (!trimmed) throw new Error("검색어를 입력해 주세요.");
   if (canonicalTeam(index.team) !== team) throw new Error("선택한 팀과 검색 인덱스의 팀이 달라요. 다시 불러와 주세요.");
-  const screens = index.screens.filter((screen) => canonicalTeam(screen.teamPage) === team).map((s) => ({ ...s, teamPage: team }));
+  const screens = index.screens.filter((screen) => canonicalTeam(screen.teamPage) === team && !isDescriptionFrame(screen.name, screen.section)).map((s) => ({ ...s, teamPage: team }));
   const limit = candidateBudget(screens);
   const trace: SearchTrace = { query: trimmed, team, syncedAt: index.syncedAt, totalScreens: index.screens.length, scopedScreens: screens.length,
     candidateLimit: limit, candidateTruncated: screens.length > limit, stage: "index" };

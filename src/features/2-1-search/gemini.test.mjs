@@ -7,6 +7,7 @@ import { GeminiSearchError } from './gemini-error.ts';
 import { runSearch } from './search-pipeline.ts';
 import { parseSafeGeminiHttpError } from './gemini-http-error.ts';
 import { SEARCH_INTERPRET_INSTRUCTIONS, SEARCH_JUDGE_INSTRUCTIONS } from './judge-prompt.ts';
+import { DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL } from './gemini-config.ts';
 
 // Node 테스트에서만 Next.js 번들 표식을 해제한다. 프로덕션의 client-only 경계는 그대로 둔다.
 registerHooks({ resolve(specifier, context, nextResolve) {
@@ -68,8 +69,12 @@ test('interpret·judge 모두 개인 키와 기존 JSON 모드 설정 사용, �
 
 test('공통 interpret·judge는 각각 503 한 번만 재시도하고 실제 요청 수를 알린다', async () => {
   let calls = 0, notices = 0, retries = 0;
-  const adapter = createGeminiSearchAi(key, { onRequest: () => notices++, onRetry: () => retries++ });
-  await mocked(async () => {
+  const models = [], retryModels = [], requests = [];
+  const adapter = createGeminiSearchAi(key, { onRequest: () => notices++, onRetry: (_stage, _delay, model) => { retries++; retryModels.push(model); } });
+  await mocked(async (url, request) => {
+    models.push(url.split('/').at(-1).split(':')[0]);
+    requests.push(request.body);
+    assert.equal(request.headers['x-goog-api-key'], key);
     calls++;
     if (calls === 1 || calls === 3) return Response.json({}, { status: 503 });
     return envelope(calls === 2 ? interpretation : judgement);
@@ -78,6 +83,73 @@ test('공통 interpret·judge는 각각 503 한 번만 재시도하고 실제 �
     await adapter.judge({ query, team: '앱', candidates: [], conditions });
   });
   assert.equal(calls, 4); assert.equal(notices, 4); assert.equal(retries, 2);
+  assert.deepEqual(models, [DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FALLBACK_GEMINI_MODEL]);
+  assert.deepEqual(retryModels, [FALLBACK_GEMINI_MODEL, FALLBACK_GEMINI_MODEL]);
+  assert.equal(requests[0], requests[1]); assert.equal(requests[2], requests[3]);
+});
+
+test('두 모델 모두 503이면 최대 두 요청에서 실패하고 판정 단계를 호출하지 않음', async () => {
+  const models = [];
+  const index = { team: '앱', syncedAt: 'fixture', excluded: [], screens: [
+    { id: '1:1', fileKey: 'FIXTURE', teamPage: '앱', name: '홈', texts: ['홈'], components: [], tokens: [] },
+  ] };
+  await mocked(async url => {
+    models.push(url.split('/').at(-1).split(':')[0]);
+    return Response.json({ error: { code: 503, status: 'UNAVAILABLE', message: key } }, { status: 503 });
+  }, () => assert.rejects(() => runSearch({ query, team: '앱', index, ai: ai() }), error => {
+    errorKind('http-api', { stage: 'interpret', httpStatus: 503 })(error);
+    assert.match(error.message, /기본 모델과 대체 모델/);
+    return true;
+  }));
+  assert.deepEqual(models, [DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL]);
+});
+
+test('사용자가 지정한 모델은 503에도 임의의 다른 모델로 전환하지 않음', async () => {
+  const models = [];
+  await mocked(async url => {
+    models.push(url.split('/').at(-1).split(':')[0]);
+    return models.length === 1 ? new Response('', { status: 503 }) : envelope(interpretation);
+  }, () => createGeminiSearchAi(key, { model: 'custom-model' }).interpret({ query, team: '앱' }));
+  assert.deepEqual(models, ['custom-model', 'custom-model']);
+});
+
+test('503 이외 HTTP 실패에는 대체 모델 호출 없음', async () => {
+  for (const status of [400, 401, 403, 404, 429, 500]) {
+    let calls = 0;
+    await mocked(async () => { calls++; return new Response('', { status }); },
+      () => assert.rejects(interpret, errorKind('http-api', { httpStatus: status })));
+    assert.equal(calls, 1);
+  }
+});
+
+test('해석 성공 뒤 판정에서만 503이어도 대체 모델로 판정하며 근거 검증 형식 유지', async () => {
+  const models = [];
+  const adapter = ai();
+  await mocked(async url => {
+    models.push(url.split('/').at(-1).split(':')[0]);
+    if (models.length === 2) return new Response('', { status: 503 });
+    return envelope(models.length === 1 ? interpretation : judgement);
+  }, async () => {
+    await adapter.interpret({ query, team: '앱' });
+    assert.equal((await adapter.judge({ query, team: '앱', candidates: [], conditions }))[0].checks[1].scope, 'region');
+  });
+  assert.deepEqual(models, [DEFAULT_GEMINI_MODEL, DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL]);
+});
+
+test('503 후 취소하거나 서버가 긴 대기를 요구하면 대체 모델을 호출하지 않음', async () => {
+  for (const mode of ['cancel', 'retry-after']) {
+    let calls = 0;
+    const controller = new AbortController();
+    const fetcher = async () => {
+      calls++;
+      return new Response('', { status: 503, headers: mode === 'retry-after' ? { 'retry-after': '60' } : {} });
+    };
+    await assert.rejects(() => requestGeminiJson({ apiKey: key, model: DEFAULT_GEMINI_MODEL,
+      fallbackModel: FALLBACK_GEMINI_MODEL, stage: 'interpret', systemInstruction: 'fixture', input: '{}',
+      signal: controller.signal, onRetry: () => controller.abort(),
+    }, fetcher));
+    assert.equal(calls, 1);
+  }
 });
 
 test('요청·본문 수신·503 재시도 대기를 포함한 시간 초과는 추가 요청 없이 종료한다',async()=>{
@@ -276,15 +348,17 @@ test('불충족 후보는 명시적으로 추천 전용 처리하고 다른 잘�
   assert.throws(() => parseJudgements(value, true), errorKind('schema', { fieldPath: '$[0].verdict' }));
 });
 
-test('일반 검색과 MCP가 쓰는 같은 어댑터에서 영역 Empty 근거와 부분 일치 판정 보존', async () => {
-  let calls = 0;
+test('일반 검색과 MCP가 쓰는 같은 어댑터에서 영역 Empty와 화면 전체 Empty 요청을 구분', async () => {
   const index = { team: '앱', syncedAt: 'fixture', excluded: [], screens: [{ id: 'fake', fileKey: 'MOCK_FILE', teamPage: '앱', name: 'fixture', texts: ['홈', '아직 게시물이 없어요'], components: [], tokens: [], figmaUrl: 'https://www.figma.com/design/MOCK_FILE/?node-id=fake', syncedAt: 'fixture' }] };
-  await mocked(async () => { calls++; return envelope(calls === 1 ? interpretation : judgement); }, async () => {
-    const result = await runSearch({ query, team: '앱', index, ai: ai() });
-    assert.equal(result.results[0].verdict, '부분 일치');
-    assert.ok(result.results[0].reasons.some(reason => reason.includes('아직 게시물이 없어요')));
-  });
-  assert.equal(calls, 2);
+  for (const [searchQuery, expected] of [[query, '정답 후보'], [`${query} 화면 전체`, '부분 일치']]) {
+    let calls = 0;
+    await mocked(async () => { calls++; return envelope(calls === 1 ? interpretation : judgement); }, async () => {
+      const result = await runSearch({ query: searchQuery, team: '앱', index, ai: ai() });
+      assert.equal(result.results[0].verdict, expected);
+      assert.ok(result.results[0].reasons.some(reason => reason.includes('아직 게시물이 없어요')));
+    });
+    assert.equal(calls, 2);
+  }
 });
 
 test('interpret 실패 시 judge 요청을 보내지 않음', async () => {

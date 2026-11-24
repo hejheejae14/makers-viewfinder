@@ -26,8 +26,18 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
   const seen = new Set<string>();
   const verified: VerifiedCandidate[] = [];
   const nearbyOnly = judgements.length === 0;
-  const assessed: AiJudgement[] = nearbyOnly ? candidates.map((_, i) => ({ screenId: `candidate-${i + 1}`, verdict: "부분 일치", relevance: "low", recommendationOnly: true, reasons: ["정답을 확인하지 못해 실제 단서가 있는 가까운 화면을 추천"],
-    checks: conditions.map(c => ({ conditionId: c.id!, status: "확인 불가", evidenceRefs: [], scope: "unknown", explanation: "AI의 조건 충족 판정을 확인하지 못함" })) })) : judgements;
+  const assessed: AiJudgement[] = nearbyOnly ? candidates.map((candidate, i) => {
+    const atoms = getEvidence(candidate.screen);
+    return { screenId: `candidate-${i + 1}`, verdict: "부분 일치", relevance: "low", recommendationOnly: true,
+      reasons: ["AI가 판정 결과를 반환하지 않아 인덱스의 관련 단서로 추천"],
+      checks: conditions.map(c => {
+        // 단어 일치는 AI의 의미·범위 판정을 대신하지 않는다. 실제 단서만 연결하고
+        // 미확인 상태를 유지해 근거가 있는데도 '인덱스 근거 없음'으로 보이지 않게 한다.
+        const refs = c.requirement === "exclude" ? [] : atoms.filter(a => a.strength === "direct" && a.source !== "팀" && conditionMatches(a, c)).slice(0, 3).map(a => a.ref);
+        return { conditionId: c.id!, status: "확인 불가", evidenceRefs: refs, scope: "unknown",
+          explanation: refs.length ? "관련 문구는 있지만 AI가 조건별 판정을 반환하지 않아 충족 여부는 미확인" : "AI가 조건별 판정을 반환하지 않아 충족 여부는 미확인" };
+      }) };
+  }) : judgements;
   for (const [aiOrder, judgement] of assessed.entries()) {
     if (seen.has(judgement.screenId)) continue;
     const match = /^candidate-(\d+)$/.exec(judgement.screenId);
@@ -87,10 +97,13 @@ export function verifyJudgements(candidates: SearchCandidate[], judgements: AiJu
     const reasons = positive.map((condition) => {
       const check = get(condition);
       const quotes = check.evidenceRefs.map((ref) => { const atom = byRef.get(ref)!; return `${atom.source} '${atom.value}'`; }).join(", ");
-      return `[${check.status}] ${condition.label}: ${quotes || "인덱스 근거 없음"}${check.explanation ? ` — AI 해석/검증 안내: ${check.explanation}` : ""}`;
+      return `[${check.status}] ${condition.label}: ${quotes || "AI가 인용한 근거 없음"}${check.explanation ? ` — AI 해석/검증 안내: ${check.explanation}` : ""}`;
     });
-    if (recommendation) reasons.unshift(`유사 화면 추천: 정답으로 확인한 화면은 아닙니다.${relatedAtoms.length ? ` 실제 관련 단서: ${relatedAtoms.slice(0, 3).map(atom => `${atom.source} '${atom.value}'`).join(", ")}` : ""}`);
-    if (judgement.recommendationOnly) reasons.push("AI의 부정 판정 또는 정답 미확인으로 인해 부분 일치 추천으로만 표시합니다.");
+    const conditionClues = positive.flatMap(c => relatedAtoms.find(a => conditionMatches(a, c)) ?? []);
+    const diverseClues = [...new Map([...conditionClues, ...relatedAtoms].map(a => [a.ref, a])).values()];
+    if (recommendation) reasons.unshift(`유사 화면 추천: 정답으로 확인한 화면은 아닙니다.${diverseClues.length ? ` 실제 관련 단서: ${diverseClues.slice(0, 3).map(atom => `${atom.source} '${atom.value}'`).join(", ")}` : ""}`);
+    if (nearbyOnly) reasons.push("AI가 판정 결과를 반환하지 않아 검색어와 관련된 문구가 있는 화면을 추천했습니다. 조건 불충족 판정은 아닙니다.");
+    else if (judgement.recommendationOnly) reasons.push("AI의 부정 판정 또는 정답 미확인으로 인해 부분 일치 추천으로만 표시합니다.");
     if (judgement.evidenceIncomplete) reasons.unshift("요청 크기를 제한하기 위해 일부 화면 정보는 AI에 전달하지 않았습니다. 전체 조건을 확정하지 않고 부분 일치로 표시합니다.");
     const unmetConditions = conditions.filter((condition) => condition.requirement === "exclude"
       ? get(condition).status !== "불충족" : (condition.requirement ?? "must") === "must" && get(condition).status !== "확인됨")

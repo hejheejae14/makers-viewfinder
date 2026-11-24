@@ -184,7 +184,7 @@ export function ResultDetail({
           </dd>
           {unmetConditions?.length ? (
             <>
-              <dt>맞지 않은 조건</dt>
+              <dt>미충족·미확인 조건</dt>
               <dd>
                 <ul className={styles.lines}>
                   {unmetConditions.map((condition) => (

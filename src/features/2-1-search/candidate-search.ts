@@ -88,8 +88,32 @@ export function retrieveCandidates(screens: IndexedScreen[], conditions: SearchC
     const keys = new Set(lexical.map((candidate) => key(candidate.screen)));
     return [...lexical, ...screens.filter((screen) => !keys.has(key(screen))).map((screen) => matchScreen(screen, conditions))];
   }
-  const result = lexical.slice(0, Math.max(1, limit - Math.max(5, Math.floor(limit / 3))));
-  const keys = new Set(result.map((candidate) => key(candidate.screen)));
+  const result: SearchCandidate[] = [];
+  const keys = new Set<string>();
+  const add = (candidate: SearchCandidate) => { if (!keys.has(key(candidate.screen)) && result.length < limit) { result.push(candidate); keys.add(key(candidate.screen)); } };
+  // 여러 파일을 합친 팀에서는 한 파일의 메뉴 문구(예: 어드민의 '홈')가
+  // 다른 파일의 실제 main 화면 후보를 모두 밀어내지 않게 한다.
+  // 이름은 탐색용 힌트이며, 최종 조건 확인은 기존 AI·근거 검증에서 수행한다.
+  const roles = conditions.filter(c => c.kind === "screen" && (c.requirement ?? "must") === "must");
+  const roleFiles = new Set<string>();
+  const roleBuckets = new Set<string>();
+  const bucketFor = (screen: IndexedScreen) => `${screen.fileKey}/${screen.pageId ?? screen.section ?? ""}`;
+  const hasRoleName = (candidate: SearchCandidate) => roles.some(c => conditionMatches({ ref: "name", source: "화면 이름", value: candidate.screen.name, strength: "hint" }, c));
+  const roleSlots = Math.max(1, Math.floor(limit / 3));
+  for (const candidate of lexical) {
+    if (roleFiles.size >= roleSlots) break;
+    if (roleFiles.has(candidate.screen.fileKey)) continue;
+    if (hasRoleName(candidate)) { add(candidate); roleFiles.add(candidate.screen.fileKey); roleBuckets.add(bucketFor(candidate.screen)); }
+  }
+  // 같은 파일의 와이어프레임 한 장 때문에 다른 페이지의 실제 메인 화면이
+  // 사라지지 않도록 남은 탐색 슬롯은 역할 이름이 맞는 다른 페이지에 배분한다.
+  for (const candidate of lexical) {
+    if (result.length >= roleSlots) break;
+    if (roleBuckets.has(bucketFor(candidate.screen))) continue;
+    if (hasRoleName(candidate)) { add(candidate); roleBuckets.add(bucketFor(candidate.screen)); }
+  }
+  const lexicalSlots = Math.max(1, limit - Math.max(5, Math.floor(limit / 3)));
+  for (const candidate of lexical) { if (result.length >= lexicalSlots) break; add(candidate); }
   const covered = new Set(result.map((candidate) => `${candidate.screen.fileKey}/${candidate.screen.pageId ?? candidate.screen.section ?? ""}`));
   // 입력 순서 대신 각 파일·페이지의 가장 관련 있는 화면을 탐색 슬롯에 둔다.
   const lexicalKeys = new Set(lexical.map((c) => key(c.screen)));
@@ -98,11 +122,11 @@ export function retrieveCandidates(screens: IndexedScreen[], conditions: SearchC
     if (result.length >= limit) break;
     const bucket = `${screen.fileKey}/${screen.pageId ?? screen.section ?? ""}`;
     if (keys.has(key(screen)) || covered.has(bucket)) continue;
-    result.push(matchScreen(screen, conditions)); keys.add(key(screen)); covered.add(bucket);
+    add(matchScreen(screen, conditions)); covered.add(bucket);
   }
   for (const candidate of lexical) {
     if (result.length >= limit) break;
-    if (!keys.has(key(candidate.screen))) { result.push(candidate); keys.add(key(candidate.screen)); }
+    add(candidate);
   }
   return result;
 }

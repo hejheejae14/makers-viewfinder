@@ -77,11 +77,12 @@ export function McpPocSearch() {
       if (!search) { setMessage(`임시 인덱스 ${temporary.screens.length}개 확인 · Gemini 호출 0회`); return; }
       const ai = createGeminiSearchAi(session.apiKey, { onRequest: () => setCalls(n => n + 1),
         onPayload: stats => setPayloadStats(stats),
-        onRetry: () => setMessage("Gemini의 503 일시 오류로 잠시 기다린 뒤 한 번 재시도합니다. 추가 사용량이 발생할 수 있어요.") });
+        onRetry: (_stage, delayMs, model) => setMessage(`Gemini의 503 일시 오류로 약 ${Math.ceil(delayMs / 1000)}초 후 ${model} 모델로 한 번 재시도합니다. 추가 사용량이 발생할 수 있어요.`) });
       const result = await runSearch({ query, team: "앱", index: temporary, signal: controller.signal,
         ai, onTrace: value => { setTrace(summarizeTrace(value)); setSearchWarnings(value.interpretation?.warnings ?? []); },
       });
       setResponse(result);
+      setMessage("");
       setSelectedId(result.results[0] ? screenIdentity(result.results[0].screen) : null);
       setDetailOpen(true);
     } catch (error) {
@@ -140,7 +141,7 @@ export function McpPocSearch() {
       </table>}
     </section>
     </details>
-    <Callout>검색 실행 시 {DEFAULT_GEMINI_MODEL} 기본 2회(해석 1회 + 판정 1회), 503일 때만 단계별 1회 재시도로 최대 4회 요청합니다. 추가 사용량이 발생할 수 있어요.
+    <Callout>검색 실행 시 {DEFAULT_GEMINI_MODEL} 기본 2회(해석 1회 + 판정 1회), 503일 때만 대체 Gemini 모델로 전환하며 단계별 1회 재시도로 최대 4회 요청합니다. 추가 사용량이 발생할 수 있어요.
       무료 한도 내 무료이며 유료 예시로 입력 1만 + 출력 2천 토큰은 약 $0.008입니다. 실제 비용은 사용량에 따라 달라집니다.
       검색어와 4개 후보의 텍스트가 Google로 전송됩니다. <a href="https://aistudio.google.com/docs/pricing#gemini-3.5-flash-lite" target="_blank" rel="noreferrer">가격표</a></Callout>
     <form className={styles.form} onSubmit={submit}>

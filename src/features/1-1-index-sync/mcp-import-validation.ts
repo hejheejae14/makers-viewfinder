@@ -1,6 +1,7 @@
 import type { IndexedScreen, SearchTeam } from "../../lib/types";
 import { canonicalTeam } from "../../lib/screen-identity";
 import { getFileSources } from "./file-registry";
+import { isDescriptionFrame } from "./screen-rules";
 
 type Rule = (value: unknown) => boolean;
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
@@ -42,6 +43,10 @@ export function validateMcpImport(value: unknown, team: SearchTeam): { screens: 
     if (!screenShape(raw)) reason = "필수 필드·자료형·허용 필드를 확인해 주세요. 화면 원본이나 추가 비밀 필드는 허용하지 않습니다.";
     else {
       const s = raw as IndexedScreen;
+      if (isDescriptionFrame(s.name, s.section)) {
+        rejected.push({ row, reason: "Description 설명판은 검색 화면으로 가져오지 않습니다." });
+        return;
+      }
       const source = sources.find(f => f.fileKey === s.fileKey && (f.role !== "archive" || f.pageIds?.includes(s.pageId ?? "")));
       if (s.teamPage !== team || (s.originalTeam !== undefined && canonicalTeam(s.originalTeam) !== team) || !source
         || (s.originalTeam !== undefined && !["앱", "플그", "크루", "공홈", "어드민"].includes(s.originalTeam))

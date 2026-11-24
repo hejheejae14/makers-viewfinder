@@ -1,6 +1,6 @@
 import type { ComponentUsage, ExcludedFrame, IndexedScreen, MdsElement, TeamPage } from "../../lib/types";
 import { mdsLibraryName, type MdsKeys } from "./mds";
-import { judgeFrame, type FrameStats } from "./screen-rules";
+import { isDescriptionFrame, judgeFrame, type FrameStats } from "./screen-rules";
 
 /**
  * Figma 노드 조회 응답을 검색 인덱스 형식으로 바꿉니다. (Figma는 읽기만 합니다.)
@@ -79,6 +79,10 @@ function collect(
 ) {
   for (const child of container.children ?? []) {
     if (child.visible === false) continue;
+    if (["FRAME", "SECTION", "GROUP"].includes(child.type) && isDescriptionFrame(child.name)) {
+      result.excluded.push({ id: child.id, fileKey: options.fileKey, sourceId: options.sourceId, name: child.name, reason: "Description 설명판은 검색 화면에서 제외" });
+      continue;
+    }
 
     if (child.type === "SECTION" || child.type === "GROUP") {
       collect(child, [...sectionPath, child.name], response, options, result);
@@ -104,7 +108,7 @@ function collect(
   }
 }
 
-/** 분리된 화면 크기의 형제 프레임 또는 거의 같은 크기의 단일 래퍼를 펼친다. */
+/** 가로로 분리된 화면 크기의 형제 프레임 또는 거의 같은 크기의 단일 래퍼를 펼친다. */
 function independentChildren(frame: FigmaNode): boolean {
   const flatten = (nodes: FigmaNode[]): FigmaNode[] => nodes.filter((n) => n.visible !== false)
     .flatMap((n) => n.type === "GROUP" || n.type === "SECTION" ? flatten(n.children ?? []) : [n]);
@@ -118,7 +122,9 @@ function independentChildren(frame: FigmaNode): boolean {
     const bb = b.absoluteBoundingBox as typeof aa;
     if (aa.x === undefined || aa.y === undefined || bb.x === undefined || bb.y === undefined) return false;
     const comparable = Math.min(area(a), area(b)) / Math.max(area(a), area(b)) >= 0.5;
-    const gap = Math.max(bb.x - aa.x - aa.width, aa.x - bb.x - bb.width, bb.y - aa.y - aa.height, aa.y - bb.y - bb.height);
+    // 세로 간격만으로 나누면 긴 웹페이지의 hero·콘텐츠·푸터를 별도 화면으로
+    // 오인한다. 가로로 떨어진 형제 화면만 작업 컨테이너의 근거로 사용한다.
+    const gap = Math.max(bb.x - aa.x - aa.width, aa.x - bb.x - bb.width);
     return comparable && gap >= 24 && area(a) < area(frame) * 0.8 && area(b) < area(frame) * 0.8;
   }));
 }
