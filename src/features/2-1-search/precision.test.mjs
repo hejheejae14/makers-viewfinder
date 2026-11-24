@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { findCandidatesByConditions, retrieveCandidates } from "./candidate-search.ts";
-import { getEvidence } from "./evidence.ts";
+import { conditionMatches, getEvidence } from "./evidence.ts";
 import { guardUnderstanding } from "./query-understanding.ts";
 import { parseInterpretation, parseJudgements } from "./gemini-validation.ts";
 import { verifyJudgements, toAiCandidates } from "./verification.ts";
@@ -141,10 +141,73 @@ test("같은 팀의 다른 파일·구역은 이름이 달라도 탐색 슬롯�
   assert.equal(results.length, 20);
 });
 
+test("한 파일의 홈 메뉴 단서가 다른 파일의 실제 main 화면을 후보에서 밀어내지 않음", () => {
+  const roles = [{ ...home, aliases: ["홈", "home", "메인", "main"] }];
+  const screens = Array.from({ length: 35 }, (_, i) => screen(`admin-${i}`, { fileKey: "ADMIN", name: `관리 ${i}`, section: "관리", pageId: "1:1", texts: ["홈", "운영 관리"] }));
+  for (const fileKey of ["PUBLIC_A", "PUBLIC_B"]) {
+    screens.push(screen(`${fileKey}-other`, { fileKey, pageId: "2:1", section: "공홈 핸드오프", name: "activities", texts: ["활동 소개"] }));
+    screens.push(screen(`${fileKey}-main`, { fileKey, pageId: "2:1", section: "공홈 핸드오프", name: "main_page_desktop_1440", texts: ["우리의 프로젝트", "함께하는 사람들"] }));
+  }
+  screens.push(screen("PUBLIC_B-wireframe", { fileKey: "PUBLIC_B", pageId: "3:1", section: "와이어프레임", name: "main_wireframe", texts: ["홈", "구조 검토"] }));
+  const candidates = retrieveCandidates(screens, roles, 20);
+  assert.equal(candidates.length, 20);
+  assert.equal(new Set(candidates.map(c => `${c.screen.fileKey}/${c.screen.id}`)).size, 20);
+  for (const fileKey of ["PUBLIC_A", "PUBLIC_B"]) assert.ok(candidates.some(c => c.screen.id === `${fileKey}-main`));
+  assert.ok(candidates.some(c => c.screen.id === "PUBLIC_B-wireframe"));
+  // 후보 이름은 정답 근거가 아니다. 빈 AI 판정이면 자동 승격하지 않는다.
+  assert.ok(verifyJudgements(candidates, [], roles, "앱").every(v => v.result.verdict === "부분 일치"));
+});
+
 test("AI가 누락한 명시적 홈·빈 상태 조건을 복구하고 경고를 남긴다", () => {
   const result = guardUnderstanding("홈 화면 Empty View", { conditions: [] });
   assert.deepEqual(result.conditions.map((condition) => condition.kind), ["screen", "state"]);
   assert.equal(result.warnings.length, 2);
+});
+
+test("메인화면 Empty View는 화면 역할과 영역의 빈 상태를 분리하며 전체 Empty 명시는 보존", () => {
+  const result = guardUnderstanding("메인화면 empty view 찾아줘", { conditions: [] });
+  assert.equal(result.conditions.find(c => c.kind === "screen").scope, "screen");
+  assert.equal(result.conditions.find(c => c.kind === "state").scope, "region");
+  const entire = guardUnderstanding("메인화면 전체가 empty인 화면", { conditions: [] });
+  assert.equal(entire.conditions.find(c => c.kind === "state").scope, "screen");
+  assert.equal(guardUnderstanding("홈페이지 버튼", { conditions: [{ label: "버튼", aliases: ["버튼"], kind: "component" }] }).conditions.some(c => c.kind === "screen"), false);
+});
+
+test("검색어에 없는 팀 선택은 서비스 조건이 아니며 다른 불명확한 조건은 그대로 추정", () => {
+  const raw = { conditions: [
+    { id: "team", label: "앱", aliases: ["앱"], kind: "service", requirement: "must", sourceText: "앱", scope: "screen" },
+    { ...home, sourceText: "메인화면" }, { ...empty, sourceText: "empty view", scope: "region" },
+  ] };
+  const result = parseInterpretation(raw, "메인화면 empty view 찾아줘", "앱");
+  assert.deepEqual(result.conditions.map(c => c.kind), ["screen", "state"]);
+  const explicit = parseInterpretation(raw, "앱 메인화면 empty view 찾아줘", "앱");
+  assert.ok(explicit.conditions.some(c => c.kind === "service"));
+  const unrelated = parseInterpretation({ conditions: [{ ...home, sourceText: "오류" }] }, "홈 화면", "앱");
+  assert.equal(unrelated.conditions[0].sourceVerified, false);
+});
+
+test("메인화면의 띄어쓰기 차이는 조건을 중복 생성하지 않고 홈 동의어와 영역 범위를 보존", () => {
+  const result = parseInterpretation({ conditions: [
+    { ...home, aliases: ["메인"], sourceText: "메인 화면" },
+    { ...empty, sourceText: "Empty View", scope: "screen" },
+  ] }, "메인화면 empty view 찾아줘", "앱");
+  assert.equal(result.conditions.length, 2);
+  assert.ok(result.conditions[0].aliases.includes("홈"));
+  assert.equal(result.conditions[1].scope, "region");
+  const repeated = guardUnderstanding("메인화면 empty view 찾아줘", result);
+  assert.deepEqual(repeated.conditions, result.conditions);
+});
+
+test("영역 Empty 요청은 홈에 프로필·행사 콘텐츠가 남아 있어도 홈 안의 빈 상태를 확인한다", () => {
+  const queryConditions = [home, { ...empty, scope: "region" }];
+  const results = verify([screen("home-region", { texts: ["홈", "아직 최신글이 없어요", "프로필", "1차 행사"] })], [
+    judgement("candidate-1", [check("home", "확인됨", ["texts/0"]), check("empty", "확인됨", ["texts/1"], "region")]),
+  ], queryConditions);
+  assert.equal(results[0].result.verdict, "정답 후보");
+  const entire = verify([screen("home-region")], [
+    judgement("candidate-1", [check("home", "확인됨", ["texts/0"]), check("empty", "확인됨", ["texts/1"], "region")]),
+  ]);
+  assert.equal(entire[0].result.verdict, "부분 일치");
 });
 
 test("원문에 없는 필수조건·잘못된 구조를 조용히 적용하지 않는다", () => {
@@ -178,6 +241,36 @@ test("정답 없음은 최대 3개 실제 단서가 있는 후보만 추천, 무
   assert.deepEqual(verify([screen("unrelated", { texts: ["회원 설정"], section: undefined, name: "Frame" })], []), []);
   assert.deepEqual(verify([screen("other", { teamPage: "플그" })], []), []);
   assert.deepEqual(verify([screen("excluded")], [], [home, { ...empty, requirement: "exclude" }]), []);
+});
+
+test("빈 AI 판정은 조건 불충족과 구분하고 실제 관련 문구를 보여주되 정답으로 승격하지 않음", () => {
+  const result = verify([screen("nearby", { texts: ["홈페이지", "홈", "아직 최신글이 없어요"] })], []);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].result.verdict, "부분 일치");
+  assert.ok(result[0].checks.every(c => c.status === "확인 불가"));
+  assert.deepEqual(result[0].checks.map(c => c.evidenceRefs), [["texts/1"], ["texts/2"]]);
+  assert.ok(result[0].result.reasons.some(r => r.includes("AI가 판정 결과를 반환하지 않아")));
+  assert.ok(result[0].result.reasons.some(r => r.includes("아직 최신글이 없어요")));
+  assert.ok(result[0].result.reasons.every(r => !r.includes("인덱스 근거 없음") && !r.includes("홈페이지")));
+});
+
+test("홈페이지 링크만 있는 화면은 홈 화면의 관련 단서로 사용하지 않음", () => {
+  const atom = { ref: "texts/0", source: "화면 속 텍스트", strength: "direct", value: "홈페이지" };
+  assert.equal(conditionMatches(atom, home), false);
+  assert.equal(conditionMatches({ ...atom, value: "홈" }, home), true);
+  assert.equal(conditionMatches({ ...atom, value: "홈페이지" }, { kind: "text", aliases: ["홈페이지"] }), true);
+  assert.deepEqual(verify([screen("footer", { section: undefined, name: "Frame", texts: ["홈페이지"] })], []), []);
+});
+
+test("영어 Empty View 해석에도 한국어 빈 상태 단서를 후보 선정에 유지", () => {
+  const parsed = parseInterpretation({ conditions: [
+    { ...home, sourceText: "메인화면" },
+    { ...empty, aliases: ["Empty View", "empty"], sourceText: "empty view", scope: "region" },
+  ] }, "메인화면 empty view 찾아줘", "앱");
+  const state = parsed.conditions.find(c => c.kind === "state");
+  assert.ok(state.aliases.includes("없어요"));
+  const [candidate] = findCandidatesByConditions([screen("main", { texts: ["홈", "아직 최신글이 없어요"] })], parsed.conditions);
+  assert.ok(candidate.matchedConditions.includes(state.label));
 });
 
 test("선호·제외 조건을 필수로 승격하지 않고 제외가 확인되면 반환하지 않는다", () => {

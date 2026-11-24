@@ -14,12 +14,12 @@ function wait(delayMs: number, signal?: AbortSignal): Promise<void> {
 }
 
 /** 503 응답만 최대 한 번 재시도한다. 키·요청·응답 원문은 이벤트에 전달하지 않는다. */
-export async function requestWith503Retry(send: () => Promise<Response>, events: RetryEvents = {},
+export async function requestWith503Retry(send: (attempt: number) => Promise<Response>, events: RetryEvents = {},
   sleep: (delayMs: number, signal?: AbortSignal) => Promise<void> = wait): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     events.signal?.throwIfAborted();
     events.onRequest?.();
-    const response = await send();
+    const response = await send(attempt);
     if (response.status !== 503 || attempt >= 1) return response;
     const retryAfter = response.headers?.get("retry-after");
     const serverDelay = retryAfter ? (/^\d+(\.\d+)?$/.test(retryAfter) ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now()) : NaN;

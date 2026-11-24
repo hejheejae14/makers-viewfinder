@@ -196,7 +196,9 @@ export function SearchView({
             : undefined,
     }));
     try {
-      const ai = createGeminiSearchAi(session.apiKey, { onRetry: () => { if (!controller.signal.aborted) setRetryNotice("Gemini 서버가 일시적으로 혼잡해 잠시 기다린 뒤 한 번 재시도합니다."); } });
+      const ai = createGeminiSearchAi(session.apiKey, { onRetry: (_stage, delayMs, model) => {
+        if (!controller.signal.aborted) setRetryNotice(`Gemini가 일시적으로 응답하지 않아 약 ${Math.ceil(delayMs / 1000)}초 후 ${model} 모델로 한 번 재시도합니다.`);
+      } });
       const response = await searchTeam({
         query,
         team,
@@ -329,7 +331,7 @@ export function SearchView({
             )}
           </Button>
         </form>
-        <p>검색은 기본 2회, 503 일시 오류 시 단계별 1회 재시도로 최대 4회 Gemini 요청을 사용합니다. 재시도에 추가 사용량이 발생할 수 있어요.</p>
+        <p>검색은 기본 2회, 503 일시 오류 시 대체 Gemini 모델로 전환하며 단계별 1회 재시도로 최대 4회 요청합니다. 재시도에 추가 사용량이 발생할 수 있어요.</p>
         {retryNotice && <Callout>{retryNotice}</Callout>}
         {!!searchWarnings.length && <Callout>{searchWarnings.join(" ")}</Callout>}
 

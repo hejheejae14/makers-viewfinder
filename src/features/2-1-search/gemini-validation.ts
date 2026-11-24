@@ -1,7 +1,9 @@
 import type { AiJudgement, ConditionCheck, ConditionKind, QueryUnderstanding, Requirement, SearchCondition } from "./search-model";
+import type { TeamPage } from "../../lib/types";
 import { guardUnderstanding } from "./query-understanding";
 import { INTERPRET_SCHEMA, JUDGE_SCHEMA, validateGeminiSchema } from "./gemini-schema";
 import { GeminiSearchError } from "./gemini-error";
+import { normalizeSpacing } from "./evidence";
 
 const MAX_CONDITIONS = 20;
 const MAX_ALIASES = 12;
@@ -15,7 +17,7 @@ export function parseGeminiJson(text: string): unknown {
   }
 }
 
-export function parseInterpretation(value: unknown, query?: string): QueryUnderstanding {
+export function parseInterpretation(value: unknown, query?: string, selectedTeam?: TeamPage): QueryUnderstanding {
   if (query !== undefined) validateGeminiSchema(value, INTERPRET_SCHEMA, "interpret");
   if (!isRecord(value) || !Array.isArray(value.conditions)) throw invalidResponse();
   if (value.conditions.length > MAX_CONDITIONS) throw new Error("검색 조건이 너무 많아요. 검색어를 나눠 입력해 주세요.");
@@ -40,8 +42,14 @@ export function parseInterpretation(value: unknown, query?: string): QueryUnders
       || typeof item.sourceText !== "string" || !item.sourceText.trim()) {
       throw new GeminiSearchError("semantic", "interpret", "검색 조건을 원문과 연결하지 못했어요. 사용자가 말하지 않은 조건을 적용하지 않도록 검색을 중단했어요.", `$.conditions[${i}].sourceText`);
     }
-    const normalized = (text: string) => text.normalize("NFKC").toLocaleLowerCase("ko-KR").replace(/\s+/g, "");
-    const sourceVerified = normalized(query).includes(normalized(item.sourceText as string));
+    const sourceVerified = normalizeSpacing(query).includes(normalizeSpacing(item.sourceText as string));
+    // 선택한 팀은 이미 인덱스 범위로 제한된다. AI가 팀 선택을 검색어에 없는
+    // 서비스 조건으로 중복 추가해 모든 결과를 '추정'으로 만드는 경우만 제거한다.
+    if (!sourceVerified && selectedTeam && item.kind === "service"
+      && [label, ...aliases].some(alias => normalizeSpacing(alias) === normalizeSpacing(selectedTeam))) {
+      warnings.push("선택한 팀은 검색 범위로 적용하고, 검색어에 없는 팀 서비스 조건은 제외했어요.");
+      return [];
+    }
     if (!sourceVerified) warnings.push("일부 검색 조건의 원문 인용을 확인하지 못했어요. 해당 조건은 추정으로 표시하고 가까운 화면을 추천합니다.");
     if (item.requirement === "should" && !/가능하면|선호|있으면|선택|되도록|가급적|prefer|optional/i.test(query)) {
       warnings.push("명시적인 선호 표현이 없어 AI가 참고조건으로 해석한 항목을 필수조건으로 유지했어요.");
